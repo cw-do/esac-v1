@@ -1,0 +1,142 @@
+{
+    "module9": {
+        "description": "Structured JSON Knowledge Base for EQ-SANS RAG system.",
+        "sections": {
+            "configs": [
+                {
+                    "name": "conf_2500mm_2p5A_60Hz",
+                    "distance_m": 2.5,
+                    "wavelength_A": 2.5,
+                    "mode": [
+                        "trans",
+                        "scatt"
+                    ]
+                },
+                {
+                    "name": "conf_4000mm_2p5A_60Hz",
+                    "distance_m": 4.0,
+                    "wavelength_A": 2.5,
+                    "mode": [
+                        "trans",
+                        "scatt"
+                    ]
+                },
+                {
+                    "name": "conf_4000mm_7p0A_60Hz",
+                    "distance_m": 4.0,
+                    "wavelength_A": 7.0,
+                    "mode": [
+                        "trans",
+                        "scatt"
+                    ]
+                },
+                {
+                    "name": "conf_4000mm_10p0A_60Hz",
+                    "distance_m": 4.0,
+                    "wavelength_A": 10.0,
+                    "mode": [
+                        "trans",
+                        "scatt"
+                    ]
+                },
+                {
+                    "name": "conf_8000mm_8p0A_60Hz",
+                    "distance_m": 8.0,
+                    "wavelength_A": 8.0,
+                    "mode": [
+                        "trans",
+                        "scatt"
+                    ]
+                },
+                {
+                    "name": "conf_9000mm_15p0A_60Hz",
+                    "distance_m": 9.0,
+                    "wavelength_A": 15.0,
+                    "mode": [
+                        "trans",
+                        "scatt"
+                    ]
+                }
+            ],
+            "environments": {
+                "standard": {
+                    "peltier": {
+                        "temp_range": [
+                            -10,
+                            125
+                        ],
+                        "positions": [
+                            1,
+                            12
+                        ]
+                    },
+                    "ti": {
+                        "temp_range": [
+                            10,
+                            60
+                        ],
+                        "positions": "fixed"
+                    },
+                    "banjo": {
+                        "temp_range": [
+                            10,
+                            60
+                        ],
+                        "positions": "fixed"
+                    },
+                    "tumbler": {
+                        "temp_range": "ambient",
+                        "positions": "rotating"
+                    }
+                },
+                "non_standard": [
+                    "magnet",
+                    "cryostat",
+                    "furnace",
+                    "humidity_cell",
+                    "custom"
+                ]
+            },
+            "temperature_rules": {
+                "peltier_max": 125,
+                "polysci_max": 60,
+                "high_temp_threshold": 80,
+                "equilibration_seconds": 600
+            },
+            "naming": {
+                "transmission_prefix": "T-",
+                "scattering_prefix": "S-",
+                "empty_beam": "T-emptybeam <config>"
+            },
+            "commands": [
+                "setipts",
+                "loadconf",
+                "openShutter",
+                "closeShutter",
+                "runsampleid",
+                "setpeltier1temp",
+                "setpeltier2temp",
+                "set_polysci_temp",
+                "delay",
+                "estimate"
+            ],
+            "pc_conversion": {
+                "one_hour_pc": 5,
+                "defaults": {
+                    "transmission_pc": 0.15,
+                    "scatt_short_lambda_pc": 1.0,
+                    "scatt_mid_lambda_pc": 2.0,
+                    "scatt_long_lambda_pc": 4.0
+                }
+            },
+            "safety": {
+                "max_peltier_temp": 125,
+                "max_polysci_temp": 60,
+                "emergency_numbers": {
+                    "landline": "911",
+                    "mobile": "865-574-6606"
+                }
+            }
+        }
+    }
+}
