@@ -1,0 +1,428 @@
+import sys
+import os
+import warnings
+import argparse
+from datetime import datetime
+
+# Suppress SIP deprecation warning
+warnings.filterwarnings("ignore", message=".*sipPyTypeDict.*deprecated.*", category=DeprecationWarning)
+
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QSplitter, QVBoxLayout, QWidget,
+                             QPushButton, QHBoxLayout, QLabel, QComboBox, QLineEdit,
+                             QTextEdit, QListWidget, QProgressBar, QMessageBox, QDialog,
+                             QDialogButtonBox)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QFont
+
+from gui.editor_widget import EditorWidget
+from gui.chat_widget import ChatWidget
+from gui.settings_dialog import SettingsDialog
+from services.llm_service import LLMService
+from services.knowledge_manager import KnowledgeManager
+from services.script_executor import ScriptExecutor
+from services.config_manager import ConfigManager
+
+class AgentWorker(QThread):
+    """Worker thread for agentic task processing"""
+    progress_update = pyqtSignal(str)
+    task_complete = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, llm_service, knowledge_manager, task_description, pc_per_hour):
+        super().__init__()
+        self.llm_service = llm_service
+        self.knowledge_manager = knowledge_manager
+        self.task_description = task_description
+        self.pc_per_hour = pc_per_hour
+        self.conversation_history = []
+
+    def run(self):
+        try:
+            # Step 1: Create measurement plan
+            self.progress_update.emit("Creating measurement plan...")
+            plan = self.create_measurement_plan()
+            self.progress_update.emit(f"Plan created: {plan[:100]}...")
+
+            # Step 2: Generate script
+            self.progress_update.emit("Generating script...")
+            script = self.generate_script(plan)
+            self.progress_update.emit("Script generated")
+
+            # Step 3: Review for missing information and errors
+            self.progress_update.emit("Reviewing script for issues...")
+            review = self.review_script(script)
+            self.progress_update.emit("Review completed")
+
+            # Step 4: Estimate time
+            self.progress_update.emit("Estimating execution time...")
+            time_estimate = self.estimate_time(script)
+            self.progress_update.emit(f"Estimated time: {time_estimate}")
+
+            # Step 5: Prepare final result
+            result = {
+                'plan': plan,
+                'script': script,
+                'review': review,
+                'time_estimate': time_estimate,
+                'task': self.task_description
+            }
+
+            self.task_complete.emit(result)
+
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+    def create_measurement_plan(self):
+        """Create a detailed measurement plan based on the task"""
+        context = self.knowledge_manager.get_full_context()
+
+        prompt = f"""You are an expert EQ-SANS experimental scientist. Based on the task description and your knowledge of EQ-SANS procedures, create a detailed measurement plan.
+
+Task: {self.task_description}
+
+Knowledge Base:
+{context}
+
+Create a comprehensive measurement plan that includes:
+1. Sample preparation requirements
+2. Instrument configuration (temperature, wavelength, etc.)
+3. Measurement sequence (transmission, scattering, background)
+4. Data reduction steps
+5. Safety considerations
+6. Estimated beam time requirements
+
+Be specific and follow EQ-SANS best practices from the knowledge base."""
+
+        messages = [{"role": "system", "content": "You are an expert EQ-SANS scientist creating measurement plans."},
+                   {"role": "user", "content": prompt}]
+
+        response, _ = self.llm_service.generate_response_stream("", context, callback=None, conversation_history=messages)
+        return response
+
+    def generate_script(self, plan):
+        """Generate Python script based on the measurement plan"""
+        context = self.knowledge_manager.get_full_context()
+
+        prompt = f"""Based on this measurement plan, generate a complete, executable Python script for EQ-SANS data collection.
+
+Measurement Plan:
+{plan}
+
+Knowledge Base:
+{context}
+
+Requirements:
+1. Use only functions and commands from the knowledge base
+2. Include proper imports and instrument setup
+3. Follow the sequence: imports → setipts → transmission → scattering
+4. Include error handling where appropriate
+5. Add comments explaining each step
+6. Use proper IPTS numbers and configuration
+
+Generate the complete script:"""
+
+        messages = [{"role": "system", "content": "You are generating executable EQ-SANS scripts based on measurement plans."},
+                   {"role": "user", "content": prompt}]
+
+        response, _ = self.llm_service.generate_response_stream("", context, callback=None, conversation_history=messages)
+        return response
+
+    def review_script(self, script):
+        """Review script for missing information and errors"""
+        context = self.knowledge_manager.get_full_context()
+
+        prompt = f"""Review this EQ-SANS script for:
+1. Missing required parameters (IPTS, sample info, etc.)
+2. Incorrect function usage
+3. Missing safety checks
+4. Logical errors in measurement sequence
+5. Missing imports or dependencies
+
+Script to review:
+{script}
+
+Knowledge Base:
+{context}
+
+Provide a detailed review with any issues found and recommendations:"""
+
+        messages = [{"role": "system", "content": "You are reviewing EQ-SANS scripts for correctness and completeness."},
+                   {"role": "user", "content": prompt}]
+
+        response, _ = self.llm_service.generate_response_stream("", context, callback=None, conversation_history=messages)
+        return response
+
+    def estimate_time(self, script):
+        """Estimate execution time based on script content"""
+        # Simple estimation based on typical EQ-SANS operations
+        # This could be enhanced with more sophisticated analysis
+        lines = script.split('\n')
+        time_estimate = 0
+
+        # Count different types of operations
+        transmission_count = sum(1 for line in lines if 'transmission' in line.lower())
+        scattering_count = sum(1 for line in lines if 'scattering' in line.lower() or 'scan' in line.lower())
+        temperature_changes = sum(1 for line in lines if 'temperature' in line.lower())
+
+        # Estimate times (rough approximations)
+        time_estimate += transmission_count * 10  # 10 minutes per transmission
+        time_estimate += scattering_count * 30     # 30 minutes per scattering measurement
+        time_estimate += temperature_changes * 15  # 15 minutes per temperature change
+
+        # Minimum time and overhead
+        time_estimate = max(time_estimate, 30)  # Minimum 30 minutes
+        time_estimate += 10  # Setup overhead
+
+        return f"{time_estimate} minutes"
+
+class ConfirmationDialog(QDialog):
+    """Dialog to confirm agent-generated plan and script"""
+
+    def __init__(self, task_result, parent=None):
+        super().__init__(parent)
+        self.task_result = task_result
+        self.setWindowTitle("Agent Task Review")
+        self.setGeometry(200, 200, 800, 600)
+
+        layout = QVBoxLayout()
+
+        # Task description
+        layout.addWidget(QLabel(f"<b>Task:</b> {task_result['task']}"))
+
+        # Plan section
+        plan_label = QLabel("<b>Measurement Plan:</b>")
+        layout.addWidget(plan_label)
+
+        plan_text = QTextEdit()
+        plan_text.setPlainText(task_result['plan'])
+        plan_text.setMaximumHeight(150)
+        layout.addWidget(plan_text)
+
+        # Script section
+        script_label = QLabel("<b>Generated Script:</b>")
+        layout.addWidget(script_label)
+
+        script_text = QTextEdit()
+        script_text.setPlainText(task_result['script'])
+        script_text.setMaximumHeight(200)
+        layout.addWidget(script_text)
+
+        # Review section
+        review_label = QLabel("<b>Script Review:</b>")
+        layout.addWidget(review_label)
+
+        review_text = QTextEdit()
+        review_text.setPlainText(task_result['review'])
+        review_text.setMaximumHeight(100)
+        layout.addWidget(review_text)
+
+        # Time estimate
+        time_label = QLabel(f"<b>Estimated Time:</b> {task_result['time_estimate']}")
+        layout.addWidget(time_label)
+
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+            Qt.Horizontal, self)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.setLayout(layout)
+
+class AgentMainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("ESAC Agent v1.5 - Autonomous EQ-SANS Assistant")
+        self.setGeometry(100, 100, 1200, 900)
+
+        # Initialize services
+        self.config_manager = ConfigManager()
+        self.llm_service = LLMService(self.config_manager)
+        self.knowledge_manager = KnowledgeManager()
+        self.script_executor = ScriptExecutor()
+
+        # Create central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Main layout
+        layout = QVBoxLayout()
+
+        # Task input section
+        task_layout = QHBoxLayout()
+        task_layout.addWidget(QLabel("Task Description:"))
+        self.task_input = QTextEdit()
+        self.task_input.setPlaceholderText("Describe your EQ-SANS measurement task...")
+        self.task_input.setMaximumHeight(60)
+        task_layout.addWidget(self.task_input)
+
+        self.pc_input = QLineEdit("5.2")
+        self.pc_input.setFixedWidth(50)
+        task_layout.addWidget(QLabel("PC/h:"))
+        task_layout.addWidget(self.pc_input)
+
+        self.run_agent_button = QPushButton("Run Agent")
+        self.run_agent_button.clicked.connect(self.run_agent)
+        task_layout.addWidget(self.run_agent_button)
+
+        layout.addLayout(task_layout)
+
+        # Progress and status
+        self.status_label = QLabel("Ready to receive tasks")
+        layout.addWidget(self.status_label)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        layout.addWidget(self.progress_bar)
+
+        # Results display
+        self.results_text = QTextEdit()
+        self.results_text.setReadOnly(True)
+        layout.addWidget(self.results_text)
+
+        # Action buttons
+        button_layout = QHBoxLayout()
+
+        self.confirm_button = QPushButton("Confirm & Execute")
+        self.confirm_button.clicked.connect(self.confirm_and_execute)
+        self.confirm_button.setEnabled(False)
+        button_layout.addWidget(self.confirm_button)
+
+        self.modify_button = QPushButton("Modify Task")
+        self.modify_button.clicked.connect(self.modify_task)
+        self.modify_button.setEnabled(False)
+        button_layout.addWidget(self.modify_button)
+
+        self.settings_button = QPushButton("Settings")
+        self.settings_button.clicked.connect(self.show_settings)
+        button_layout.addWidget(self.settings_button)
+
+        layout.addLayout(button_layout)
+
+        central_widget.setLayout(layout)
+
+        # Load knowledge
+        extra_dirs = ["/home/controls/var/tmp"] if os.path.exists("/home/controls/var/tmp") else None
+        self.knowledge_manager.load_or_build_index(extra_dirs)
+
+        # Store agent results
+        self.agent_result = None
+
+    def run_agent(self):
+        """Start the agentic workflow"""
+        task = self.task_input.toPlainText().strip()
+        if not task:
+            QMessageBox.warning(self, "Input Required", "Please describe your measurement task.")
+            return
+
+        try:
+            pc_per_hour = float(self.pc_input.text())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Input", "Please enter a valid proton charge per hour value.")
+            return
+
+        # Disable input during processing
+        self.run_agent_button.setEnabled(False)
+        self.task_input.setReadOnly(True)
+        self.progress_bar.setVisible(True)
+        self.status_label.setText("Agent working...")
+
+        # Start agent worker
+        self.agent_worker = AgentWorker(self.llm_service, self.knowledge_manager, task, pc_per_hour)
+        self.agent_worker.progress_update.connect(self.update_progress)
+        self.agent_worker.task_complete.connect(self.agent_task_complete)
+        self.agent_worker.error_occurred.connect(self.agent_error)
+        self.agent_worker.start()
+
+    def update_progress(self, message):
+        """Update progress display"""
+        self.status_label.setText(message)
+
+    def agent_task_complete(self, result):
+        """Handle completed agent task"""
+        self.agent_result = result
+
+        # Update UI
+        self.progress_bar.setVisible(False)
+        self.status_label.setText("Agent task completed - review and confirm")
+
+        # Display results
+        display_text = f"""=== AGENT TASK RESULTS ===
+
+TASK: {result['task']}
+
+=== MEASUREMENT PLAN ===
+{result['plan']}
+
+=== GENERATED SCRIPT ===
+{result['script']}
+
+=== SCRIPT REVIEW ===
+{result['review']}
+
+=== ESTIMATED TIME ===
+{result['time_estimate']}
+"""
+        self.results_text.setPlainText(display_text)
+
+        # Enable confirmation
+        self.confirm_button.setEnabled(True)
+        self.modify_button.setEnabled(True)
+        self.run_agent_button.setEnabled(True)
+        self.task_input.setReadOnly(False)
+
+    def agent_error(self, error_msg):
+        """Handle agent errors"""
+        self.progress_bar.setVisible(False)
+        self.status_label.setText("Agent error occurred")
+        QMessageBox.critical(self, "Agent Error", f"An error occurred during agent processing:\n\n{error_msg}")
+
+        # Re-enable input
+        self.run_agent_button.setEnabled(True)
+        self.task_input.setReadOnly(False)
+
+    def confirm_and_execute(self):
+        """Show confirmation dialog and execute if approved"""
+        if not self.agent_result:
+            return
+
+        # Show confirmation dialog
+        dialog = ConfirmationDialog(self.agent_result, self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Execute the script
+            self.execute_script(self.agent_result['script'])
+
+    def execute_script(self, script):
+        """Execute the generated script"""
+        try:
+            self.status_label.setText("Executing script...")
+            self.script_executor.run_script(script)
+            self.status_label.setText("Script execution completed")
+            QMessageBox.information(self, "Success", "Script executed successfully!")
+        except Exception as e:
+            self.status_label.setText("Script execution failed")
+            QMessageBox.critical(self, "Execution Error", f"Failed to execute script:\n\n{str(e)}")
+
+    def modify_task(self):
+        """Allow user to modify the task"""
+        if self.agent_result:
+            # Pre-fill with current task
+            self.task_input.setPlainText(self.agent_result['task'])
+            # Reset state
+            self.agent_result = None
+            self.confirm_button.setEnabled(False)
+            self.modify_button.setEnabled(False)
+            self.results_text.clear()
+            self.status_label.setText("Task modified - ready to run agent again")
+
+    def show_settings(self):
+        """Show settings dialog"""
+        dialog = SettingsDialog(self.config_manager, self.llm_service)
+        dialog.exec_()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = AgentMainWindow()
+    window.show()
+    sys.exit(app.exec_())
