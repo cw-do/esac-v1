@@ -1,0 +1,11 @@
+If the user asks for the current time this is how you can check it
+
+from datetime import datetime
+current_date_and_time = datetime.now()
+print("The current date and time is", current_date_and_time)
+
+
+
+
+
+

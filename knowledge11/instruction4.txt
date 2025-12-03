@@ -1,0 +1,62 @@
+[example for two configurations] If temperature higher than 80C is requested using peltier block, changing polysci temperature is also recommended. Here is an example to measure 80C and 100C. Note that the highest temperature of the poly_sci is 60C. 
+
+from epics import caget
+from scan import *
+import os
+import sys
+sys.path.append('/home/controls/var/tmp/scripting/dev/')
+from eqsans_scanfunctions_live import *  #use this for individual command-que
+
+setipts(31836)
+set_polysci_temp(60)
+setpeltier1temp(80)
+setpeltier2temp(80)
+loadconf('conf_4000mm_2p5A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 2.5a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-banjo 4m 2.5a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-porsil 4m 2.5a ', 0, 'peltier', 'pc', 3, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 80C 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+runsampleid('S-porsil 80C 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 10a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-banjo 4m 10a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-porsil 4m 10a ', 0, 'peltier', 'pc', 3, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 80C 4m 10a ', 0, 'peltier', 'pc', 2, 3)
+runsampleid('S-porsil 80C 4m 10a ', 0, 'peltier', 'pc', 3, 3)
+closeShutter()
+
+set_polysci_temp(60)
+setpeltier1temp(100)
+setpeltier2temp(100)
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 100C 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+runsampleid('S-porsil 100C 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 100C 4m 10a ', 0, 'peltier', 'pc', 2, 3)
+runsampleid('S-porsil 100C 4m 10a ', 0, 'peltier', 'pc', 3, 3)
+closeShutter()
+
+set_polysci_temp(20)
+setpeltier1temp(20)
+setpeltier2temp(20)
+
+[Walkthrough for the above example] to change the peltier temperature, command setpeltier1temp() and setpeltier2temp() are used. They are also from the functions defined in the eqsans_scanfunctions_live.py  Note that transmissions are only needed one time and does not need to be repeated for different temperatures. This is typically case when samples are stable. In order to indicate temperature, the temperature values are included in the text label like 'S-banjo 100C 4m 10a ' or 'S-porsil 100C 4m 10a '. Here, 50C indicate it was measured at 100C. Usually it is a safe practice to lower the temperature after the all measurements are done as the last two command in the above script. They are setting the temperature back to 20C. 
+
+

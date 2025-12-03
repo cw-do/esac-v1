@@ -1,0 +1,25 @@
+This document provides a general checklist for the Local Contact for the start of a neutron scattering experiment.
+
+Is the IPTS number changed?
+Are the samples checked in and have an ITEMS number assigned?
+Is the SMA signed?
+Is the ESS signed?
+Are the users trained on the instrument?
+Is there a box setup for irradiated samples?
+
+Is the phyisical and the selected sample environment the same?
+Are the sample positions calibrated?
+Is the pinhole fully inserted?
+Is the beamstop adjusted at each Q setting?
+Is the sample table fast release fixed?
+Is the airflow set to desired on or off state?
+Is there container, empty cell and porous silica in the rack?
+Is the neutron camera removed?
+
+
+
+
+
+
+
+

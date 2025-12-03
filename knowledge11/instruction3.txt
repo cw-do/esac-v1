@@ -1,0 +1,98 @@
+To perform measurements at various temperatures, repeat measurement script after changing temperature. temperature set commands may be different for different sample environment. Here temperature is set for the peltier block. block 1 is for position 1 to 6. block 2 is for position 7 to 12. setpeltier1temp changes temperature for block 1. setpeltier2temp changes temperature for block 2. 
+
+from epics import caget
+from scan import *
+import os
+import sys
+sys.path.append('/home/controls/var/tmp/scripting/dev/')
+from eqsans_scanfunctions_live import *  #use this for individual command-que
+
+setipts(31836)
+setpeltier1temp(25)
+setpeltier2temp(25)
+loadconf('conf_4000mm_2p5A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 2.5a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-banjo 4m 2.5a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-porsil 4m 2.5a ', 0, 'peltier', 'pc', 3, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 25C 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+runsampleid('S-porsil 25C 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 10a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-banjo 4m 10a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-porsil 4m 10a ', 0, 'peltier', 'pc', 3, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 25C 4m 10a ', 0, 'peltier', 'pc', 2, 3)
+runsampleid('S-porsil 25C 4m 10a ', 0, 'peltier', 'pc', 3, 3)
+closeShutter()
+
+setpeltier1temp(50)
+setpeltier2temp(50)
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 50C 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+runsampleid('S-porsil 50C 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 50C 4m 10a ', 0, 'peltier', 'pc', 2, 3)
+runsampleid('S-porsil 50C 4m 10a ', 0, 'peltier', 'pc', 3, 3)
+closeShutter()
+
+setpeltier1temp(20)
+setpeltier2temp(20)
+
+[Walkthrough for the above example] to change the peltier temperature, command setpeltier1temp() and setpeltier2temp() are used. They are also from the functions defined in the eqsans_scanfunctions_live.py  Note that transmissions are only needed one time and does not need to be repeated for different temperatures. This is typically case when samples are stable. In order to indicate temperature, the temperature values are included in the text label like 'S-banjo 50C 4m 10a ' or 'S-porsil 50C 4m 10a '. Here, 50C indicate it was measured at 50C. Usually it is a safe practice to lower the temperature after the all measurements are done as the last two command in the above script. They are setting the temperature back to 20C. 
+
+
+If one wants to perform experiments at 5 temperature values on 3 samples (a, b, c) using 1 configuration. here is an example.
+
+from epics import caget
+from scan import *
+import os
+import sys
+sys.path.append('/home/controls/var/tmp/scripting/dev/')
+from eqsans_scanfunctions_live import *  #use this for individual command-que
+
+setipts(31836)
+setpeltier1temp(25)
+setpeltier2temp(25)
+loadconf('conf_4000mm_2p5A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 2.5a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-a 4m 2.5a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-b 4m 2.5a ', 0, 'peltier', 'pc', 3, 0.15)
+runsampleid('T-c 4m 2.5a ', 0, 'peltier', 'pc', 4, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-a 25C 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+runsampleid('S-b 25C 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+runsampleid('S-c 25C 4m 2.5a ', 0, 'peltier', 'pc', 4, 1)
+closeShutter()
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+temp_list = [40, 50, 70]
+for temp in temp_list:
+    setpeltier1temp(25)
+    setpeltier2temp(25)
+    delay(600) # give time for temperature to be equilibrated.
+    openShutter()
+    runsampleid('S-a ' + str(temp) + 'C 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+    runsampleid('S-b ' + str(temp) + 'C 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+    runsampleid('S-c ' + str(temp) + 'C 4m 2.5a ', 0, 'peltier', 'pc', 4, 1)
+    closeShutter()
+

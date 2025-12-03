@@ -1,0 +1,48 @@
+This is an example script to perform sans experiment over two configurations. two configurations are 4m 2.5A and 4m 10A configurations. Perform both transmission and scattering measurements for each configuration before changing configurations. 
+# following 6 lines have to be loaded in order to load required packages.
+from epics import caget
+from scan import *
+import os
+import sys
+sys.path.append('/home/controls/var/tmp/scripting/dev/')
+from eqsans_scanfunctions_live import *  #use this for individual command-que
+
+# user script begins here
+setipts(31836)
+
+loadconf('conf_4000mm_2p5A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 2.5a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-banjo 4m 2.5a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-porsil 4m 2.5a ', 0, 'peltier', 'pc', 3, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 4m 2.5a ', 0, 'peltier', 'pc', 2, 1)
+runsampleid('S-porsil 4m 2.5a ', 0, 'peltier', 'pc', 3, 1)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 10a ', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-banjo 4m 10a ', 0, 'peltier', 'pc', 2, 0.15)
+runsampleid('T-porsil 4m 10a ', 0, 'peltier', 'pc', 3, 0.15)
+closeShutter()
+
+loadconf('conf_4000mm_10p0A_60Hz_scatt')
+openShutter()
+runsampleid('S-banjo 4m 10a ', 0, 'peltier', 'pc', 2, 3)
+runsampleid('S-porsil 4m 10a ', 0, 'peltier', 'pc', 3, 3)
+closeShutter()
+
+[Walkthrough for the above example] Basic flow is same as the previous example. Note that after the 4m 2.5A measurement, which is specified by 'conf_4000mm_2p5A_60Hz_trans' and corresponding scattering configuration 'conf_4000mm_2p5A_60Hz_scatt', 10A configuration was measured using 'conf_4000mm_10p0A_60Hz_trans' and 'conf_4000mm_10p0A_60Hz_scatt'.  In both cases, empty beam is not measured using scattering mode. neutron flux is lower as the wavelength increases. usually 2.5A neutron scattering measurement require pc=1 while 10A neutron scattering measurement require pc=2 or more.
+
+
+conf_9000mm_15p0A_60Hz_scatt : 9m detector position 15A neutron wavelength band scattering measurement
+
+conf_8000mm_8p0A_60Hz_scatt : 8m detector position 8A neutron wavelength band (8m 8a) scattering. 
+conf_8000mm_8p0A_60Hz_trans : 8m detector position 8A neutron wavelength band (8m 8a) transmission.
+
+
+

@@ -1,0 +1,54 @@
+
+[Example script] Following script is to perform measurement on a sample in a non-standard sample holder. 
+
+# default packages need to be loaded for any type of experiment script.
+from epics import caget
+from scan import *
+import os
+import sys
+sys.path.append('/home/controls/var/tmp/scripting/dev/')
+from eqsans_scanfunctions_live import *  #use this for individual command-que
+
+# set the proposal IPTS number
+setipts(12345)
+
+# measure the transmission
+loadconf('conf_4000mm_2p5A_60Hz_trans')
+openShutter()
+runsampleid('T-humidity chamber 4m 2.5a ', 0, 'peltier', 'pc', -1, 0.15)
+closeShutter()
+
+# measure the scattering
+loadconf('conf_4000mm_2p5A_60Hz_scatt')
+openShutter()
+runsampleid('S-humidity chamber 4m 2.5a ', 0, 'peltier', 'pc', -1, 2)
+closeShutter()
+
+[explanation of above script] The imported packages are standard for all eq-sans data acquisition scripts, regardless of the sample environment being used.  
+
+The unique proposal IPTS number is set using setipts() define the IPTS number. this is a unique number for each experiment. User needs to provide this number. If not specified by the user, you can use 99999 as a default and let user know.   
+
+The instrument configuration is set using the loadconf() command.  The first time it is used is to set up for transmission, while the second time it is used sets the instrument to measure the scattering.  
+
+The secondary shuter is opened using the openShutter() command. 
+
+The runsampleid() command performs the actual measurement.  To use a non-standard sample environment, such as a magnet, cryostat, furnace or humidity cell, the sample position is set to "-1".  
+
+runsampleid(title, ITEMS, sample_env, pc/time, pos, duration) tells the system to collect data.  The information to be provided follows.
+
+- title: Is a string in quotations identifying the sample by name and can include the configuration.  Here, 'T-humidity chamber 4m 2.5a' or 'S-humidity chamber 4m 2.5a'. 'T-' denotes a transmission measurement, while 'S-' denotes a scattering measurement.  The thing being measured here is 'humidity chamber'.  The '4m 2.5a' denotes the instrument configuration being used.
+
+- ITEMS: The sample identification number, which will be specified by user. each sample may have unique ITEMS number. The unique sample identification number, the ITEMS number, is different from IPTS number. For a sample without an ITEMS number, use 0. 
+
+- sample_env: indicates the choice of sample environment.  The options for standard sample environments are 'peltier', 'ti', 'banjo' and 'tumbler'. Even when using a different sample environment, specify one of the standard ones available to use runsampleid().
+
+- the next input defines the unit of duration of experiment. it is either 'pc' or 'time'. 'pc' means proton charge and 'time' means time in seconds. this is the unit of duration specified in the last input. note that proton charge value 5 is approximately 1 hour.
+
+- The sample position is the next input.  When using a non-standard sample environment, such as a magnet, cryostat, large furnace or humidity chamber, set the position to '-1'.
+
+- The duration is the final input to the command. Using 'pc' in the 4th input of the runsampleid function tells the system to measure to a proton charge value of '2'.  
+
+- Therefore, in the runsampleid('S-humidity chamber 4m 2.5a ', 0, 'peltier', 'pc', -1, 2) instructs the system to make a measurement at whatever position the X-translation stage is set at for a proton charge of '2'.  
+
+
+
