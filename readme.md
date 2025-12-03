@@ -5,6 +5,9 @@ ESAC v1 is an AI-powered desktop application designed to assist with creating, e
 ## Features
 
 - **AI-Powered Chat**: Interactive chatbot that understands EQ-SANS functions and helps write/edit scripts based on experimental plans.
+- **In-Context Learning (ICL)**: Default mode using full knowledge base context for more comprehensive responses.
+- **Token & Cost Tracking**: Real-time monitoring of API usage and costs with reset functionality.
+- **Agentic Mode (v1.5)**: Autonomous task processing with measurement planning, script generation, review, and automatic execution.
 - **Script Editor**: Advanced Python editor with syntax highlighting, line numbers, and code execution.
 - **Knowledge Integration**: Access to historical scripts, instrument documentation, and EQ-SANS specific functions.
 - **Time Estimation**: Real-time estimation of script execution time based on proton charge and timing parameters.
@@ -55,10 +58,37 @@ ESAC v1 is an AI-powered desktop application designed to assist with creating, e
 
 2. **Run the application**:
    ```bash
+   # Default mode (ICL with chat interface)
    python main.py
+
+   # Traditional chat mode (RAG)
+   python main.py --rag
+
+   # Agentic mode (ESAC v1.5)
+   python main.py --agent
    ```
 
-The application window will open with the script editor on the left and chat interface on the right.
+The application window will open with the script editor on the left and chat interface on the right (or agent interface for --agent mode).
+
+## Agentic Mode (ESAC v1.5)
+
+The agentic mode provides autonomous EQ-SANS experiment planning and execution:
+
+### Features
+- **Task Description**: Describe your experimental needs in natural language
+- **Automated Planning**: AI creates detailed measurement plans including sample prep, instrument config, and sequences
+- **Script Generation**: Automatically generates complete, executable Python scripts
+- **Quality Review**: AI reviews scripts for missing parameters, errors, and safety issues
+- **Time Estimation**: Provides execution time estimates
+- **User Confirmation**: Shows comprehensive review before execution
+- **Automatic Execution**: Runs approved scripts without manual intervention
+
+### Workflow
+1. Enter task description (e.g., "Measure temperature series from 25°C to 75°C with 10°C steps")
+2. Click "Run Agent" to start autonomous processing
+3. Review the generated plan, script, and analysis
+4. Confirm execution or modify the task
+5. Agent automatically executes the approved script
 
 ## Usage
 
@@ -75,6 +105,12 @@ The application window will open with the script editor on the left and chat int
 - Ask questions about EQ-SANS functions (e.g., "What is runsampleid?")
 - Request script modifications (e.g., "Add a delay of 600 seconds")
 - Get help with experimental planning
+
+### Token & Cost Tracking
+
+- Monitor API usage in real-time with token count and USD cost display
+- Reset counters with the "Reset" button
+- Costs calculated based on current model pricing
 
 ### Settings
 
