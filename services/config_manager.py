@@ -1,6 +1,6 @@
 import os
 import json
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from dotenv import load_dotenv
 
 class ConfigManager:
@@ -28,11 +28,20 @@ class ConfigManager:
 
     def _load_config(self):
         if os.path.exists(self.config_file):
-            with open(self.config_file, "rb") as f:
-                encrypted_data = f.read()
-            if encrypted_data:
-                decrypted_data = self.cipher.decrypt(encrypted_data)
-                self.config = json.loads(decrypted_data.decode())
+            try:
+                with open(self.config_file, "rb") as f:
+                    encrypted_data = f.read()
+                if encrypted_data:
+                    decrypted_data = self.cipher.decrypt(encrypted_data)
+                    self.config = json.loads(decrypted_data.decode())
+                else:
+                    self.config = {}
+            except (InvalidToken, Exception) as e:
+                print(f"Warning: Could not decrypt config file ({e}). Starting with default config.")
+                # Remove corrupted config file
+                if os.path.exists(self.config_file):
+                    os.remove(self.config_file)
+                self.config = {}
         else:
             self.config = {}
 
