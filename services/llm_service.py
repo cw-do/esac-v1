@@ -16,13 +16,40 @@ class LLMService:
         self.model = model
         self.api_key = api_key
 
-    def generate_response_stream(self, message, context="", callback=None, conversation_history=None):
+    def generate_response_stream(self, message, context="", callback=None, conversation_history=None, icl=False):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
 
-        system_prompt = f"""You are the EQ-SANS experiment assistant. Use ONLY the retrieved RAG documents below to generate scripts and answer questions. Follow all rules from the modules.
+        if icl:
+            system_prompt = f"""You are the EQ-SANS experiment assistant. Use the provided knowledge base below to generate scripts and answer questions. Follow all rules from the modules.
+
+Knowledge Base:
+{context}
+
+Core Rules:
+- Follow real EQ-SANS instrument commands only.
+- Apply sequence: imports → setipts → transmission → scattering.
+- Enforce temperature rules, safety limits, and correct configuration order.
+- When uncertain, ask for clarification.
+- Handle missing details using defaults: IPTS=99999, ITEMS=0, etc.
+- Always prefer rules over examples. Do not invent commands.
+
+When providing templates:
+1. Copy the exact template code from the knowledge base
+2. Do not add comments, explanations, or modifications unless they appear in the original template
+3. Replace placeholder values (like CONFIG) with appropriate values from the knowledge base
+4. If no exact template matches, search for the knowledge base again and provide the closest match without modification
+
+When answering questions:
+1. Only explain functions and procedures that are explicitly defined in the knowledge base
+2. Use the exact parameter names, types, and behaviors described in the knowledge base
+3. Do not add, modify, or infer additional functionality not present in the knowledge base
+4. Reference the scan functions and instrument controls exactly as they appear in eqsans_scanfunctions_live.txt
+5. For any question about a function, quote directly from its definition in the knowledge base"""
+        else:
+            system_prompt = f"""You are the EQ-SANS experiment assistant. Use ONLY the retrieved RAG documents below to generate scripts and answer questions. Follow all rules from the modules.
 
 CRITICAL RESTRICTIONS:
 - You MUST ONLY use information from the knowledge base provided below.

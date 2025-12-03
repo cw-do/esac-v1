@@ -7,13 +7,14 @@ class ChatWorker(QThread):
     response_chunk = pyqtSignal(str)
     finished = pyqtSignal()
 
-    def __init__(self, llm_service, knowledge_manager, message, context, conversation_history=None):
+    def __init__(self, llm_service, knowledge_manager, message, context, conversation_history=None, icl=False):
         super().__init__()
         self.llm_service = llm_service
         self.knowledge_manager = knowledge_manager
         self.message = message
         self.context = context
         self.conversation_history = conversation_history
+        self.icl = icl
         self.full_response = ""
 
     def run(self):
@@ -22,7 +23,7 @@ class ChatWorker(QThread):
                 self.full_response += chunk
                 self.response_chunk.emit(chunk)
             
-            self.llm_service.generate_response_stream(self.message, self.context, chunk_callback, self.conversation_history)
+            self.llm_service.generate_response_stream(self.message, self.context, chunk_callback, self.conversation_history, self.icl)
         except Exception as e:
             self.response_chunk.emit(f"Error: {str(e)}")
         finally:
@@ -31,12 +32,13 @@ class ChatWorker(QThread):
 class ChatWidget(QWidget):
     copy_to_editor_signal = pyqtSignal(str)
 
-    def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None):
+    def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None, icl=False):
         super().__init__()
         self.llm_service = llm_service
         self.knowledge_manager = knowledge_manager
         self.config_manager = config_manager
         self.editor_widget = editor_widget
+        self.icl = icl
         self.last_speaker = None  # Track who spoke last for adding blank lines
 
         layout = QVBoxLayout()
@@ -232,7 +234,10 @@ class ChatWidget(QWidget):
         is_source_query = any(keyword in message.lower() for keyword in source_keywords)
         
         # Get context from knowledge
-        context = self.knowledge_manager.get_relevant_context(enhanced_message)
+        if self.icl:
+            context = self.knowledge_manager.get_full_context()
+        else:
+            context = self.knowledge_manager.get_relevant_context(enhanced_message)
         
         # If asking about sources, add information about all knowledge files
         if is_source_query and hasattr(self.knowledge_manager, 'local_knowledge'):
@@ -240,7 +245,7 @@ class ChatWidget(QWidget):
             context = source_info + "\n\n" + context
 
         # Start worker thread for LLM response
-        self.worker = ChatWorker(self.llm_service, self.knowledge_manager, enhanced_message, context, self.conversation_history.copy())
+        self.worker = ChatWorker(self.llm_service, self.knowledge_manager, enhanced_message, context, self.conversation_history.copy(), self.icl)
         self.worker.response_chunk.connect(self.on_response_chunk)
         self.worker.finished.connect(self.on_response_finished)
         self.worker.start()

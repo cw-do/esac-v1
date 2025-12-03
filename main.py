@@ -1,6 +1,7 @@
 import sys
 import os
 import warnings
+import argparse
 
 # Suppress SIP deprecation warning
 warnings.filterwarnings("ignore", message=".*sipPyTypeDict.*deprecated.*", category=DeprecationWarning)
@@ -19,9 +20,10 @@ from services.script_executor import ScriptExecutor
 from services.config_manager import ConfigManager
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, icl=False):
         super().__init__()
-        self.setWindowTitle("ESAC v1 - EQ-SANS Assisting Chatbot")
+        self.icl = icl
+        self.setWindowTitle("ESAC v1 - EQ-SANS Assisting Chatbot" + (" (ICL Mode)" if icl else ""))
         self.setGeometry(100, 100, 1200, 800)
 
         # Initialize services
@@ -45,7 +47,7 @@ class MainWindow(QMainWindow):
         top_splitter.addWidget(self.editor)
 
         # Chat widget
-        self.chat = ChatWidget(self.llm_service, self.knowledge_manager, self.config_manager, self.editor)
+        self.chat = ChatWidget(self.llm_service, self.knowledge_manager, self.config_manager, self.editor, self.icl)
         self.chat.copy_to_editor_signal.connect(self.copy_to_editor)
         top_splitter.addWidget(self.chat)
 
@@ -175,7 +177,11 @@ class MainWindow(QMainWindow):
             self.time_label.setText("Est. time: No script")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="ESAC v1 - EQ-SANS Assisting Chatbot")
+    parser.add_argument('--icl', action='store_true', help='Use In-Context Learning instead of RAG')
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(icl=args.icl)
     window.show()
     sys.exit(app.exec_())

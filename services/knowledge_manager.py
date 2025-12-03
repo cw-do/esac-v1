@@ -327,7 +327,7 @@ class KnowledgeManager:
         context = "\n\n".join(all_parts)
         return context[:max_length] if len(context) > max_length else context
 
-    def get_full_context(self, max_length=8000):
+    def get_full_context(self, max_length=100000):
         """Get all local knowledge as context, truncated if too long"""
         context_parts = []
         for filename, content in self.local_knowledge.items():
