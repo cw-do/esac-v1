@@ -83,11 +83,17 @@ class MainWindow(QMainWindow):
         self.settings_button.clicked.connect(self.show_settings)
         button_layout.addWidget(self.settings_button)
 
-        # Proton charge input
-        button_layout.addWidget(QLabel("PC per hour:"))
+        # Add stretch to push PC controls to the right
+        button_layout.addStretch()
+
+        # Proton charge input section
+        pc_layout = QHBoxLayout()
+        pc_layout.addWidget(QLabel("PC per hour:"))
         self.pc_input = QLineEdit("5.2")
         self.pc_input.setFixedWidth(50)
-        button_layout.addWidget(self.pc_input)
+        pc_layout.addWidget(self.pc_input)
+        pc_layout.addWidget(QLabel("  "))  # Small spacer
+        button_layout.addLayout(pc_layout)
 
         # Estimate time button
         self.estimate_button = QPushButton("Estimate Time")
