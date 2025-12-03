@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLineEdit, QPushButton, QHBoxLayout, QListWidgetItem, QComboBox, QTextEdit
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLineEdit, QPushButton, QHBoxLayout, QListWidgetItem, QComboBox, QTextEdit, QLabel
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from services.llm_service import LLMService
 from services.knowledge_manager import KnowledgeManager
@@ -6,6 +6,7 @@ from services.knowledge_manager import KnowledgeManager
 class ChatWorker(QThread):
     response_chunk = pyqtSignal(str)
     finished = pyqtSignal()
+    usage_info = pyqtSignal(dict)
 
     def __init__(self, llm_service, knowledge_manager, message, context, conversation_history=None, icl=False):
         super().__init__()
@@ -16,6 +17,7 @@ class ChatWorker(QThread):
         self.conversation_history = conversation_history
         self.icl = icl
         self.full_response = ""
+        self.usage = None
 
     def run(self):
         try:
@@ -23,10 +25,17 @@ class ChatWorker(QThread):
                 self.full_response += chunk
                 self.response_chunk.emit(chunk)
             
-            self.llm_service.generate_response_stream(self.message, self.context, chunk_callback, self.conversation_history, self.icl)
+            result = self.llm_service.generate_response_stream(self.message, self.context, chunk_callback, self.conversation_history, self.icl)
+            if isinstance(result, tuple):
+                self.full_response, self.usage = result
+            else:
+                self.full_response = result
+                self.usage = None
         except Exception as e:
             self.response_chunk.emit(f"Error: {str(e)}")
         finally:
+            if self.usage:
+                self.usage_info.emit(self.usage)
             self.finished.emit()
 
 class ChatWidget(QWidget):
@@ -40,6 +49,21 @@ class ChatWidget(QWidget):
         self.editor_widget = editor_widget
         self.icl = icl
         self.last_speaker = None  # Track who spoke last for adding blank lines
+        
+        # Token tracking
+        self.total_tokens = 0
+        self.total_cost = 0.0
+        
+        # Pricing per model (approximate USD per 1M tokens)
+        self.pricing = {
+            'openai/gpt-4o-mini': {'input': 0.15, 'output': 0.60},
+            'openai/gpt-4o': {'input': 2.50, 'output': 10.00},
+            'openai/gpt-3.5-turbo': {'input': 0.50, 'output': 1.50},
+            'anthropic/claude-3-haiku': {'input': 0.25, 'output': 1.25},
+            'anthropic/claude-3-sonnet': {'input': 3.00, 'output': 15.00},
+            'meta-llama/llama-3.1-8b-instruct': {'input': 0.10, 'output': 0.20},
+            'meta-llama/llama-3.1-70b-instruct': {'input': 0.50, 'output': 1.00},
+        }
 
         layout = QVBoxLayout()
 
@@ -80,11 +104,24 @@ class ChatWidget(QWidget):
 
         layout.addLayout(input_layout)
 
-        # Model selection
+        # Model selection and token display
+        model_layout = QHBoxLayout()
+        
         self.model_combo = QComboBox()
         self.update_model_list()
         self.model_combo.currentTextChanged.connect(self.change_model)
-        layout.addWidget(self.model_combo)
+        model_layout.addWidget(self.model_combo)
+        
+        # Token display label
+        self.token_label = QLabel("Tokens: 0 ($0.00)")
+        model_layout.addWidget(self.token_label)
+        
+        # Reset token counter button
+        self.reset_tokens_button = QPushButton("Reset")
+        self.reset_tokens_button.clicked.connect(self.reset_token_counter)
+        model_layout.addWidget(self.reset_tokens_button)
+        
+        layout.addLayout(model_layout)
 
         self.setLayout(layout)
 
@@ -248,6 +285,7 @@ class ChatWidget(QWidget):
         self.worker = ChatWorker(self.llm_service, self.knowledge_manager, enhanced_message, context, self.conversation_history.copy(), self.icl)
         self.worker.response_chunk.connect(self.on_response_chunk)
         self.worker.finished.connect(self.on_response_finished)
+        self.worker.usage_info.connect(self.on_usage_info)
         self.worker.start()
 
         self.input_field.clear()
@@ -280,3 +318,37 @@ class ChatWidget(QWidget):
         if hasattr(self, 'ai_response_text'):
             delattr(self, 'ai_response_text')
         self.worker.deleteLater()
+
+    def on_usage_info(self, usage):
+        """Update token count and cost when usage info is received"""
+        if usage:
+            input_tokens = usage.get('prompt_tokens', 0)
+            output_tokens = usage.get('completion_tokens', 0)
+            total_tokens = usage.get('total_tokens', input_tokens + output_tokens)
+            
+            self.total_tokens += total_tokens
+            
+            # Calculate cost
+            model = self.llm_service.model
+            if model in self.pricing:
+                input_cost = (input_tokens / 1000000) * self.pricing[model]['input']
+                output_cost = (output_tokens / 1000000) * self.pricing[model]['output']
+                cost = input_cost + output_cost
+                self.total_cost += cost
+            else:
+                cost = 0.0
+            
+            # Update display
+            self.token_label.setText(f"Tokens: {self.total_tokens} (${self.total_cost:.4f})")
+
+    def reset_token_counter(self):
+        """Reset the token counter and cost"""
+        self.total_tokens = 0
+        self.total_cost = 0.0
+        self.token_label.setText("Tokens: 0 ($0.00)")
+
+    def new_chat(self):
+        """Start a new chat session"""
+        self.chat_list.clear()
+        self.conversation_history = []
+        self.reset_token_counter()
