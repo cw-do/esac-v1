@@ -1,9 +1,3 @@
-[Instruction]  
-- These are function or commands list that can control instrument or sample equipment. 
-- Use the function name and the PV values inside Set function to make a best guess on what this functions do. 
-- For example, set_cryostat_vti  is apprently setting cryostat vti temperature.
-- Read the comments below to describe what each functions do (defined by def FUNCTION_NAME)
-
 # Beamline-6 EQ-SANS C Do
 from epics import caget, caput, PV, cainfo
 from scan import *
