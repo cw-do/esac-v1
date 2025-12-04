@@ -9,6 +9,7 @@ a = Analysis(
     datas=[
         ('/SNS/users/ccd/.conda/envs/esac_env/lib/python3.8/site-packages/certifi/cacert.pem', 'certifi'),
         ('knowledge', 'knowledge'),  # Include knowledge base files
+        ('.env', '.env'),  # Include .env file for internal use
     ],
     hiddenimports=[
         # PyQt5 core dependencies
