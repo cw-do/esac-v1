@@ -23,11 +23,26 @@ class KnowledgeManager:
         """Load all knowledge files into memory"""
         self.local_knowledge = {}
 
+        # Check for the specific eqsans_scanfunctions_live.py file first
+        dev_script_path = "/home/controls/var/tmp/scripting/dev/eqsans_scanfunctions_live.py"
+        if os.path.exists(dev_script_path):
+            try:
+                with open(dev_script_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    self.local_knowledge["eqsans_scanfunctions_live.py"] = content
+                    print(f"Loaded development script from: {dev_script_path}")
+            except Exception as e:
+                print(f"Error loading development script {dev_script_path}: {e}")
+
         for knowledge_dir in directories:
             if os.path.exists(knowledge_dir):
                 for file in os.listdir(knowledge_dir):
                     filepath = os.path.join(knowledge_dir, file)
                     try:
+                        # Skip eqsans_scanfunctions_live.py if we already loaded it from dev path
+                        if file == "eqsans_scanfunctions_live.py" and "eqsans_scanfunctions_live.py" in self.local_knowledge:
+                            continue
+                            
                         if file.endswith((".txt", ".md", ".py")):
                             with open(filepath, "r", encoding="utf-8") as f:
                                 content = f.read()
