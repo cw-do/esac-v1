@@ -219,21 +219,6 @@ class ChatWidget(QWidget):
         if current in models:
             self.model_combo.setCurrentText(current)
 
-    def new_chat(self):
-        """Clear the chat history and start a new conversation"""
-        # Clear the chat list
-        self.chat_list.clear()
-        
-        # Clear conversation history
-        self.conversation_history = []
-        
-        # Reset state variables
-        self.last_speaker = None
-        if hasattr(self, 'current_ai_item'):
-            delattr(self, 'current_ai_item')
-        if hasattr(self, 'ai_response_text'):
-            delattr(self, 'ai_response_text')
-
     def send_message(self):
         message = self.input_field.toPlainText().strip()
         if not message:
@@ -349,7 +334,19 @@ class ChatWidget(QWidget):
         self.token_label.setText("Tokens: 0 ($0.00)")
 
     def new_chat(self):
-        """Start a new chat session"""
+        """Clear the chat history and start a new conversation"""
+        # Clear the chat list
         self.chat_list.clear()
+        
+        # Clear conversation history
         self.conversation_history = []
+        
+        # Reset state variables
+        self.last_speaker = None
+        if hasattr(self, 'current_ai_item'):
+            delattr(self, 'current_ai_item')
+        if hasattr(self, 'ai_response_text'):
+            delattr(self, 'ai_response_text')
+        
+        # Reset token counter
         self.reset_token_counter()

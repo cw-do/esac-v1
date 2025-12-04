@@ -184,14 +184,11 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ESAC v1 - EQ-SANS Assisting Chatbot")
-    parser.add_argument('--rag', action='store_true', help='Use Retrieval-Augmented Generation instead of ICL (default is ICL)')
     parser.add_argument('--icl', action='store_true', help='Use In-Context Learning (default mode)')
     args = parser.parse_args()
 
-    # Default to ICL mode unless --rag is explicitly specified
-    icl_mode = not args.rag
-    if args.icl:
-        icl_mode = True
+    # Always use ICL mode
+    icl_mode = True
 
     app = QApplication(sys.argv)
     window = MainWindow(icl=icl_mode)
