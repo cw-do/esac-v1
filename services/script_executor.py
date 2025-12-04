@@ -3,30 +3,76 @@ import tempfile
 import os
 import ast
 import re
+import sys
 
 class ScriptExecutor:
     def __init__(self):
         pass
 
     def run_script(self, script_content):
-        """Execute the script using python command"""
+        """Execute the script using python command with real-time output"""
         try:
             # Write to temporary file
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 f.write(script_content)
                 temp_file = f.name
 
-            # Run the script
-            result = subprocess.run(['python', temp_file], capture_output=True, text=True, timeout=60)
+            # Run the script with real-time output
+            print(f"Executing script: {temp_file}")
+            process = subprocess.Popen(['python', temp_file],
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     text=True,
+                                     bufsize=1,
+                                     universal_newlines=True)
+
+            # Read output in real-time
+            output_lines = []
+            error_lines = []
+
+            # Use select to read from both stdout and stderr simultaneously
+            import select
+
+            while True:
+                # Wait for output on either stdout or stderr
+                reads = [process.stdout, process.stderr]
+                readable, _, _ = select.select(reads, [], [], 0.1)
+
+                for stream in readable:
+                    line = stream.readline()
+                    if line:
+                        if stream == process.stdout:
+                            print(line.rstrip())  # Print to terminal
+                            output_lines.append(line.rstrip())
+                        else:  # stderr
+                            print(line.rstrip(), file=sys.stderr)  # Print to stderr
+                            error_lines.append(line.rstrip())
+
+                # Check if process is done
+                if process.poll() is not None:
+                    # Read any remaining output
+                    for line in process.stdout:
+                        line = line.rstrip()
+                        print(line)
+                        output_lines.append(line)
+                    for line in process.stderr:
+                        line = line.rstrip()
+                        print(line, file=sys.stderr)
+                        error_lines.append(line)
+                    break
+
+            return_code = process.returncode
+            print(f"Script executed with return code {return_code}")
 
             # Clean up
             os.unlink(temp_file)
 
-            output = f"Exit code: {result.returncode}\n"
-            if result.stdout:
-                output += f"Output:\n{result.stdout}\n"
-            if result.stderr:
-                output += f"Errors:\n{result.stderr}"
+            # Format output for GUI display
+            output = f"Exit code: {return_code}\n"
+            if output_lines:
+                output += f"Output:\n" + "\n".join(output_lines) + "\n"
+            if error_lines:
+                output += f"Errors:\n" + "\n".join(error_lines)
 
             return output
 

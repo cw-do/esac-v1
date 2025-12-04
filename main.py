@@ -186,23 +186,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ESAC v1 - EQ-SANS Assisting Chatbot")
     parser.add_argument('--rag', action='store_true', help='Use Retrieval-Augmented Generation instead of ICL (default is ICL)')
     parser.add_argument('--icl', action='store_true', help='Use In-Context Learning (default mode)')
-    parser.add_argument('--agent', action='store_true', help='Run in agentic mode (ESAC v1.5)')
     args = parser.parse_args()
 
-    if args.agent:
-        # Import and run agent mode
-        from main_agent import AgentMainWindow
-        app = QApplication(sys.argv)
-        window = AgentMainWindow()
-        window.show()
-        sys.exit(app.exec_())
-    else:
-        # Default to ICL mode unless --rag is explicitly specified
-        icl_mode = not args.rag
-        if args.icl:
-            icl_mode = True
+    # Default to ICL mode unless --rag is explicitly specified
+    icl_mode = not args.rag
+    if args.icl:
+        icl_mode = True
 
-        app = QApplication(sys.argv)
-        window = MainWindow(icl=icl_mode)
-        window.show()
-        sys.exit(app.exec_())
+    app = QApplication(sys.argv)
+    window = MainWindow(icl=icl_mode)
+    window.show()
+    sys.exit(app.exec_())

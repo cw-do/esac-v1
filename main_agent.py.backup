@@ -87,9 +87,8 @@ Create a comprehensive measurement plan that includes:
 1. Sample preparation requirements
 2. Instrument configuration (temperature, wavelength, etc.)
 3. Measurement sequence (transmission, scattering, background)
-4. Data reduction steps
-5. Safety considerations
-6. Estimated beam time requirements
+4. Safety considerations
+5. Estimated beam time requirements
 
 Be specific and follow EQ-SANS best practices from the knowledge base."""
 

@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLineEdit, QPushButton, QHBoxLayout, QListWidgetItem, QComboBox, QTextEdit, QLabel
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
+import re
 from services.llm_service import LLMService
 from services.knowledge_manager import KnowledgeManager
 
