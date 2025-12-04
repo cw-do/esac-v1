@@ -63,9 +63,44 @@ class KnowledgeManager:
 
     def get_full_context(self, max_length=100000):
         """Get all local knowledge as context for ICL mode"""
+        # Prioritize eqsans_scanfunctions_live.py as it's most important for function definitions
+        priority_files = ['eqsans_scanfunctions_live.py']
+        other_files = [f for f in self.local_knowledge.keys() if f not in priority_files]
+        
+        # Build context with priority files first
         context_parts = []
-        for filename, content in self.local_knowledge.items():
-            context_parts.append(f"=== {filename} ===\n{content}\n")
+        for filename in priority_files + other_files:
+            if filename in self.local_knowledge:
+                content = self.local_knowledge[filename]
+                context_parts.append(f"=== {filename} ===\n{content}\n")
 
         full_context = "\n".join(context_parts)
-        return full_context[:max_length] if len(full_context) > max_length else full_context
+        
+        # If we're going to truncate, at least include the priority file completely
+        if len(full_context) > max_length:
+            # Try to fit the priority file completely
+            priority_content = ""
+            if priority_files and priority_files[0] in self.local_knowledge:
+                priority_content = f"=== {priority_files[0]} ===\n{self.local_knowledge[priority_files[0]]}\n"
+            
+            remaining_length = max_length - len(priority_content)
+            if remaining_length > 0:
+                other_content = ""
+                for filename in other_files:
+                    if filename in self.local_knowledge:
+                        file_content = f"=== {filename} ===\n{self.local_knowledge[filename]}\n"
+                        if len(other_content) + len(file_content) <= remaining_length:
+                            other_content += file_content
+                        else:
+                            # Truncate this file if needed
+                            available_space = remaining_length - len(other_content)
+                            if available_space > len(f"=== {filename} ===\n"):
+                                truncated_content = self.local_knowledge[filename][:available_space - len(f"=== {filename} ===\n") - 1]
+                                other_content += f"=== {filename} ===\n{truncated_content}\n"
+                            break
+                full_context = priority_content + other_content
+            else:
+                # If priority file alone exceeds limit, truncate it
+                full_context = priority_content[:max_length]
+        
+        return full_context
