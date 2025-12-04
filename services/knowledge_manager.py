@@ -28,7 +28,7 @@ class KnowledgeManager:
                 for file in os.listdir(knowledge_dir):
                     filepath = os.path.join(knowledge_dir, file)
                     try:
-                        if file.endswith(".txt") or file.endswith(".md"):
+                        if file.endswith((".txt", ".md", ".py")):
                             with open(filepath, "r", encoding="utf-8") as f:
                                 content = f.read()
                                 self.local_knowledge[file] = content

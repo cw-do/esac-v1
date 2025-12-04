@@ -15,15 +15,12 @@ a = Analysis(
         'PyQt5.QtWidgets',
         'PyQt5.QtNetwork',
         'PyQt5.QtPrintSupport',
-        # Your project dependencies
+        # Project dependencies
         'cryptography',
-        'sentence_transformers',
-        'openai',
-        'faiss',
-        'numpy',
-        'scipy',
-        'pandas',
-        # Other potential missing imports
+        'cryptography.fernet',
+        'dotenv',
+        'PyPDF2',
+        # Standard library modules that might need explicit inclusion
         'ast',
         're',
         'subprocess',
@@ -31,7 +28,9 @@ a = Analysis(
         'os',
         'sys',
         'select',
-        # SSL and HTTPS support
+        'json',
+        'hashlib',
+        # SSL and HTTPS support for requests
         'ssl',
         'urllib3',
         'urllib3.util.ssl_',
@@ -40,10 +39,6 @@ a = Analysis(
         'http.client',
         'socket',
         '_ssl',
-        # sentence-transformers specific
-        'sentence_transformers',
-        'transformers',
-        'torch',  # If using PyTorch backend        
     ],
     hookspath=[],
     hooksconfig={},
