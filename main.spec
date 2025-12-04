@@ -6,7 +6,10 @@ a = Analysis(
     ['main.py'],
     pathex=['/SNS/users/ccd/analysiswork/esac_v1'],  # Include project directory
     binaries=[],
-    datas=[('/SNS/users/ccd/.conda/envs/esac_env/lib/python3.8/site-packages/certifi/cacert.pem', 'certifi')],
+    datas=[
+        ('/SNS/users/ccd/.conda/envs/esac_env/lib/python3.8/site-packages/certifi/cacert.pem', 'certifi'),
+        ('knowledge', 'knowledge'),  # Include knowledge base files
+    ],
     hiddenimports=[
         # PyQt5 core dependencies
         'sip',
