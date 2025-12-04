@@ -258,7 +258,7 @@ class ChatWidget(QWidget):
         
         # Get context from knowledge
         if self.icl:
-            context = self.knowledge_manager.get_full_context()
+            context = self.knowledge_manager.get_full_context(max_length=150000)
         else:
             context = self.knowledge_manager.get_relevant_context(enhanced_message)
         
