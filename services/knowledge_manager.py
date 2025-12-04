@@ -41,6 +41,7 @@ class KnowledgeManager:
                     try:
                         # Skip eqsans_scanfunctions_live.py if we already loaded it from dev path
                         if file == "eqsans_scanfunctions_live.py" and "eqsans_scanfunctions_live.py" in self.local_knowledge:
+                            print(f"Skipping local {file} - already loaded from dev path")
                             continue
                             
                         if file.endswith((".txt", ".md", ".py")):
