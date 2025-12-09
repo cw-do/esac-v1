@@ -5,11 +5,16 @@ block_cipher = None
 a = Analysis(
     ['main.py'],
     pathex=['/SNS/users/ccd/analysiswork/esac_v1'],  # Include project directory
-    binaries=[],
+    binaries=[
+        ('/SNS/users/ccd/.conda/envs/esac_env/lib/libssl.so.3', '.'),
+        ('/SNS/users/ccd/.conda/envs/esac_env/lib/libcrypto.so.3', '.'),
+    ],
     datas=[
         ('/SNS/users/ccd/.conda/envs/esac_env/lib/python3.8/site-packages/certifi/cacert.pem', 'certifi'),
         ('knowledge', 'knowledge'),  # Include knowledge base files
-        ('.env', '.env'),  # Include .env file for internal use
+        ('gui', 'gui'),  # Include GUI modules
+        ('services', 'services'),  # Include service modules
+        ('config', 'config'),  # Include config files
     ],
     hiddenimports=[
         # PyQt5 core dependencies
@@ -20,6 +25,16 @@ a = Analysis(
         # Project dependencies
         'cryptography',
         'cryptography.fernet',
+        'cryptography.hazmat',
+        'cryptography.hazmat.backends',
+        'cryptography.hazmat.backends.openssl',
+        'cryptography.hazmat.primitives',
+        'cryptography.hazmat.primitives.asymmetric',
+        'cryptography.hazmat.primitives.ciphers',
+        'cryptography.hazmat.primitives.hashes',
+        'cryptography.hazmat.primitives.kdf',
+        'cryptography.hazmat.primitives.padding',
+        'cryptography.hazmat.primitives.serialization',
         'dotenv',
         'PyPDF2',
         # Standard library modules that might need explicit inclusion
@@ -36,11 +51,19 @@ a = Analysis(
         'ssl',
         'urllib3',
         'urllib3.util.ssl_',
+        'urllib3.contrib.pyopenssl',
         'requests',
+        'requests.adapters',
+        'requests.packages.urllib3',
+        'requests.packages.urllib3.util',
+        'requests.packages.urllib3.util.ssl_',
         'certifi',
         'http.client',
         'socket',
         '_ssl',
+        'OpenSSL',
+        'OpenSSL.crypto',
+        'OpenSSL.SSL',
     ],
     hookspath=[],
     hooksconfig={},
@@ -67,7 +90,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # Set to True for debugging if needed
+    console=True,  # Set to True for debugging if needed
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

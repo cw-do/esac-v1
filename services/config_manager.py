@@ -2,6 +2,7 @@ import os
 import json
 from cryptography.fernet import Fernet, InvalidToken
 from dotenv import load_dotenv
+import sys
 
 class ConfigManager:
     def __init__(self, config_file="config.json", key_file="key.key"):
@@ -10,8 +11,19 @@ class ConfigManager:
         self.config = {}
         self.cipher = None
 
+        # Set SSL certificate path for bundled app
+        if hasattr(sys, '_MEIPASS'):
+            ssl_cert_path = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
+            if os.path.exists(ssl_cert_path):
+                os.environ['SSL_CERT_FILE'] = ssl_cert_path
+                os.environ['REQUESTS_CA_BUNDLE'] = ssl_cert_path
+
         # Load .env file
-        load_dotenv()
+        if hasattr(sys, '_MEIPASS'):
+            dotenv_path = os.path.join(sys._MEIPASS, 'config', 'env.txt')
+        else:
+            dotenv_path = os.path.join('config', 'env.txt')
+        load_dotenv(dotenv_path=dotenv_path)
 
         self._load_or_create_key()
         self._load_config()

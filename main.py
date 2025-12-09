@@ -23,7 +23,8 @@ class MainWindow(QMainWindow):
     def __init__(self, icl=False):
         super().__init__()
         self.icl = icl
-        self.setWindowTitle("ESAC v1 - EQ-SANS Assisting Chatbot" + (" (ICL Mode)" if icl else ""))
+        mode_name = "ICL Mode" if icl else "RAG Mode"
+        self.setWindowTitle(f"ESAC v1 - EQ-SANS Assisting Chatbot ({mode_name})")
         self.setGeometry(100, 100, 1200, 800)
 
         # Initialize services
@@ -184,11 +185,15 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ESAC v1 - EQ-SANS Assisting Chatbot")
-    parser.add_argument('--icl', action='store_true', help='Use In-Context Learning (default mode)')
+    parser.add_argument('--icl', action='store_true', help='Use In-Context Learning mode (default)')
+    parser.add_argument('--rag', action='store_true', help='Use Retrieval-Augmented Generation mode')
     args = parser.parse_args()
 
-    # Always use ICL mode
-    icl_mode = True
+    # Determine mode: ICL is default, RAG if --rag is specified
+    if args.rag:
+        icl_mode = False
+    else:
+        icl_mode = True  # Default to ICL
 
     app = QApplication(sys.argv)
     window = MainWindow(icl=icl_mode)

@@ -17,6 +17,7 @@ class LLMService:
         self.api_key = api_key
 
     def generate_response_stream(self, message, context="", callback=None, conversation_history=None, icl=False):
+        
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -106,7 +107,7 @@ When answering questions:
         }
 
         try:
-            response = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=data, timeout=30, stream=True)
+            response = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=data, timeout=30, stream=True, verify=True)
             response.raise_for_status()
             
             full_response = ""

@@ -220,61 +220,64 @@ class ChatWidget(QWidget):
             self.model_combo.setCurrentText(current)
 
     def send_message(self):
-        message = self.input_field.toPlainText().strip()
-        if not message:
-            return
+        try:
+            message = self.input_field.toPlainText().strip()
+            if not message:
+                return
 
-        # Check if message mentions the script/left window
-        script_keywords = ['script', 'left window', 'editor', 'current script', 'existing code']
-        mentions_script = any(keyword in message.lower() for keyword in script_keywords)
-        
-        enhanced_message = message
-        if mentions_script and self.editor_widget:
-            editor_content = self.editor_widget.get_text()
-            tab_title = self.editor_widget.get_current_tab_title()
+            # Check if message mentions the script/left window
+            script_keywords = ['script', 'left window', 'editor', 'current script', 'existing code']
+            mentions_script = any(keyword in message.lower() for keyword in script_keywords)
             
-            # Add information about all tabs
-            tabs_info = self.editor_widget.get_all_tabs_info()
-            tab_titles = []
-            for tab in tabs_info:
-                title = tab['title']
-                if tab['is_current']:
-                    title += ' (current)'
-                tab_titles.append(title)
-            tabs_summary = f"Open tabs: {', '.join(tab_titles)}"
+            enhanced_message = message
+            if mentions_script and self.editor_widget:
+                editor_content = self.editor_widget.get_text()
+                tab_title = self.editor_widget.get_current_tab_title()
+                
+                # Add information about all tabs
+                tabs_info = self.editor_widget.get_all_tabs_info()
+                tab_titles = []
+                for tab in tabs_info:
+                    title = tab['title']
+                    if tab['is_current']:
+                        title += ' (current)'
+                    tab_titles.append(title)
+                tabs_summary = f"Open tabs: {', '.join(tab_titles)}"
+                
+                if editor_content.strip():
+                    enhanced_message = f"{message}\n\n{tabs_summary}\n\nCurrent script in editor (tab: {tab_title}):\n```\n{editor_content}\n```"
+                else:
+                    enhanced_message = f"{message}\n\n{tabs_summary}\n\nCurrent tab ({tab_title}) is empty."
+
+            # Add user message to chat (show original message)
+            self.add_message("You", message)
+            self.conversation_history.append({"role": "user", "content": enhanced_message})
+
+            # Check if message is asking about knowledge sources
+            source_keywords = ['source', 'sources', 'knowledge', 'files', 'documents', 'documents']
+            is_source_query = any(keyword in message.lower() for keyword in source_keywords)
             
-            if editor_content.strip():
-                enhanced_message = f"{message}\n\n{tabs_summary}\n\nCurrent script in editor (tab: {tab_title}):\n```\n{editor_content}\n```"
+            # Get context from knowledge
+            if self.icl:
+                context = self.knowledge_manager.get_full_context(max_length=150000)
             else:
-                enhanced_message = f"{message}\n\n{tabs_summary}\n\nCurrent tab ({tab_title}) is empty."
+                context = self.knowledge_manager.get_relevant_context(enhanced_message)
+            
+            # If asking about sources, add information about all knowledge files
+            if is_source_query and hasattr(self.knowledge_manager, 'local_knowledge'):
+                source_info = "Knowledge Base Sources:\n" + "\n".join(f"- {filename}" for filename in sorted(self.knowledge_manager.local_knowledge.keys()))
+                context = source_info + "\n\n" + context
 
-        # Add user message to chat (show original message)
-        self.add_message("You", message)
-        self.conversation_history.append({"role": "user", "content": enhanced_message})
+            # Start worker thread for LLM response
+            self.worker = ChatWorker(self.llm_service, self.knowledge_manager, enhanced_message, context, self.conversation_history.copy(), self.icl)
+            self.worker.response_chunk.connect(self.on_response_chunk)
+            self.worker.finished.connect(self.on_response_finished)
+            self.worker.usage_info.connect(self.on_usage_info)
+            self.worker.start()
 
-        # Check if message is asking about knowledge sources
-        source_keywords = ['source', 'sources', 'knowledge', 'files', 'documents', 'documents']
-        is_source_query = any(keyword in message.lower() for keyword in source_keywords)
-        
-        # Get context from knowledge
-        if self.icl:
-            context = self.knowledge_manager.get_full_context(max_length=150000)
-        else:
-            context = self.knowledge_manager.get_relevant_context(enhanced_message)
-        
-        # If asking about sources, add information about all knowledge files
-        if is_source_query and hasattr(self.knowledge_manager, 'local_knowledge'):
-            source_info = "Knowledge Base Sources:\n" + "\n".join(f"- {filename}" for filename in sorted(self.knowledge_manager.local_knowledge.keys()))
-            context = source_info + "\n\n" + context
-
-        # Start worker thread for LLM response
-        self.worker = ChatWorker(self.llm_service, self.knowledge_manager, enhanced_message, context, self.conversation_history.copy(), self.icl)
-        self.worker.response_chunk.connect(self.on_response_chunk)
-        self.worker.finished.connect(self.on_response_finished)
-        self.worker.usage_info.connect(self.on_usage_info)
-        self.worker.start()
-
-        self.input_field.clear()
+            self.input_field.clear()
+        except Exception as e:
+            pass
 
     def on_response_chunk(self, chunk):
         # Add chunk to the last AI message

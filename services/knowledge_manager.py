@@ -3,6 +3,7 @@ import re
 from PyPDF2 import PdfReader
 import json
 import hashlib
+import sys
 
 class KnowledgeManager:
     def __init__(self):
@@ -10,18 +11,23 @@ class KnowledgeManager:
         # Removed: model, index, documents, FAISS files
 
     def load_or_build_index(self, extra_dirs=None):
-        """Load knowledge base text files (simplified for ICL mode only)"""
+        """Load knowledge base text files for both ICL and RAG modes"""
         directories = ["knowledge"]
         if extra_dirs:
             directories.extend(extra_dirs)
 
         # Load all knowledge files
         self.load_local_knowledge(directories)
-        print("Knowledge base loaded for ICL mode")
+        print(f"Knowledge base loaded with {len(self.local_knowledge)} files")
 
     def load_local_knowledge(self, directories=["knowledge"]):
         """Load all knowledge files into memory"""
         self.local_knowledge = {}
+
+        if hasattr(sys, '_MEIPASS'):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         # Check for the specific eqsans_scanfunctions_live.py file first
         dev_script_path = "/home/controls/var/tmp/scripting/dev/eqsans_scanfunctions_live.py"
@@ -35,9 +41,10 @@ class KnowledgeManager:
                 print(f"Error loading development script {dev_script_path}: {e}")
 
         for knowledge_dir in directories:
-            if os.path.exists(knowledge_dir):
-                for file in os.listdir(knowledge_dir):
-                    filepath = os.path.join(knowledge_dir, file)
+            full_dir = os.path.join(base_path, knowledge_dir)
+            if os.path.exists(full_dir):
+                for file in os.listdir(full_dir):
+                    filepath = os.path.join(full_dir, file)
                     try:
                         # Skip eqsans_scanfunctions_live.py if we already loaded it from dev path
                         if file == "eqsans_scanfunctions_live.py" and "eqsans_scanfunctions_live.py" in self.local_knowledge:
@@ -104,3 +111,133 @@ class KnowledgeManager:
                 full_context = priority_content[:max_length]
         
         return full_context
+
+    def get_relevant_context(self, query, max_length=100000):
+        """Get relevant context for RAG mode based on query similarity"""
+        if not self.local_knowledge:
+            return "No knowledge base loaded."
+
+        import re
+        from collections import defaultdict
+        
+        # Prepare query for matching
+        query_lower = query.lower()
+        query_words = set(re.findall(r'\b\w+\b', query_lower))
+        
+        # Score each file based on relevance
+        file_scores = {}
+        relevant_sections = defaultdict(list)
+        
+        for filename, content in self.local_knowledge.items():
+            content_lower = content.lower()
+            score = 0
+            
+            # Exact phrase matches (highest weight)
+            if query_lower in content_lower:
+                score += 100
+            
+            # Function name matches (high weight)
+            func_pattern = r'def\s+(\w+)\s*\('
+            functions = re.findall(func_pattern, content)
+            for func in functions:
+                if func.lower() in query_lower or any(word in func.lower() for word in query_words):
+                    score += 50
+            
+            # Keyword matches
+            keyword_matches = sum(1 for word in query_words if word in content_lower)
+            score += keyword_matches * 10
+            
+            # Technical term matches (medium weight)
+            technical_terms = ['eqsans', 'sans', 'scan', 'function', 'script', 'instrument', 'detector', 'sample', 'transmission', 'scattering']
+            for term in technical_terms:
+                if term in query_lower and term in content_lower:
+                    score += 20
+            
+            file_scores[filename] = score
+            
+            # Extract relevant sections from this file
+            if score > 0:
+                lines = content.split('\n')
+                relevant_lines = []
+                
+                for i, line in enumerate(lines):
+                    line_lower = line.lower()
+                    line_score = 0
+                    
+                    # Check for function definitions
+                    if re.search(func_pattern, line):
+                        func_name = re.search(func_pattern, line).group(1)
+                        if any(word in func_name.lower() for word in query_words):
+                            line_score += 50
+                    
+                    # Check for keyword matches
+                    if any(word in line_lower for word in query_words):
+                        line_score += 10
+                    
+                    # Check for technical terms
+                    if any(term in line_lower for term in technical_terms if term in query_lower):
+                        line_score += 5
+                    
+                    if line_score > 0:
+                        # Include context around the relevant line
+                        start = max(0, i - 2)
+                        end = min(len(lines), i + 3)
+                        context_lines = lines[start:end]
+                        relevant_lines.extend(context_lines)
+                        relevant_lines.append("")  # Add blank line between sections
+                
+                if relevant_lines:
+                    # Remove duplicates while preserving order
+                    seen = set()
+                    unique_lines = []
+                    for line in relevant_lines:
+                        if line not in seen:
+                            unique_lines.append(line)
+                            seen.add(line)
+                    
+                    relevant_sections[filename] = unique_lines
+        
+        # Sort files by relevance score
+        sorted_files = sorted(file_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        # Build context from most relevant files
+        context_parts = []
+        total_length = 0
+        
+        for filename, score in sorted_files:
+            if score == 0:
+                continue
+                
+            file_content = f"=== {filename} (relevance: {score}) ===\n"
+            
+            if filename in relevant_sections:
+                # Use extracted relevant sections
+                section_content = '\n'.join(relevant_sections[filename])
+                file_content += section_content
+            else:
+                # Fallback to full file content if no sections extracted
+                file_content += self.local_knowledge[filename]
+            
+            # Check if adding this file would exceed the limit
+            if total_length + len(file_content) > max_length:
+                # Truncate this file to fit
+                available_space = max_length - total_length
+                if available_space > len(f"=== {filename} (relevance: {score}) ===\n"):
+                    truncated_content = file_content[:available_space]
+                    context_parts.append(truncated_content)
+                break
+            else:
+                context_parts.append(file_content)
+                total_length += len(file_content)
+        
+        if not context_parts:
+            # If no relevant content found, return a sample from the most important file
+            priority_file = 'eqsans_scanfunctions_live.py'
+            if priority_file in self.local_knowledge:
+                content = self.local_knowledge[priority_file]
+                # Return first 2000 characters as fallback
+                return f"=== {priority_file} ===\n{content[:2000]}..."
+            else:
+                return "No relevant knowledge found for this query."
+        
+        return '\n\n'.join(context_parts)
