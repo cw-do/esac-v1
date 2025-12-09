@@ -1,0 +1,368 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% File: esac_update.tex
+% Author: ESAC Development Team
+% Date: December 9, 2025
+%
+% Technical report on ESAC v1 improvements and updates
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Select the appropriate option for a TM [tm], SPR [spr], or LTR [ltr] report.
+\documentclass[tm]{ornltm} % Use for TM report.
+
+%% Optional packages
+\usepackage{threeparttable} % Table with captions and tablenotes
+\usepackage{booktabs} % Toprule, midrule, bottomrule
+\usepackage{multirow} % Extend table entries over multiple rows
+\usepackage{pdflscape} % Allows landscape pages for wide figures and tables
+\usepackage{hyperref} % For hyperlinks
+\usepackage{listings} % For code listings
+
+%% Bibliography styling
+\usepackage[authordate,autocite=inline,backend=biber,natbib]{biblatex-chicago}
+
+\bibliography{references.bib}
+
+%% Use inline small italic blue for comments
+\definecolor{note}{RGB}{48,96,192}
+\renewcommand{\marginpar}[1]{{\small\em\color{note}[#1]}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% AUTHORSHIP & PUBLISHING
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% AUTHOR'S LIST
+\author{Crawford, Samuel T. \and Do, Changwoo}
+
+%%% DOCUMENT TITLE
+\title{ESAC v1: Enhanced AI-Powered Chatbot for \\ EQ-SANS Experiment Automation \\ Improvements and Updates}
+
+%%% PUBLICATION DATE
+\date{\today}
+
+%%% REPORT NUMBER
+\reportnum{ORNL/TM-2025/XXXX}
+
+%%% DIVISION NAME
+\division{Neutron Sciences Directorate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DOCUMENT RESTRICTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% DRAFT
+\reportdraft
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ABBREVIATIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Define abbreviations
+\input{abbreviations_esac.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% FRONT MATTER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\frontmatter
+
+\tableofcontents
+
+\begingroup
+ \renewcommand*{\addvspace}[1]{}
+    \listoffigures
+    \listoftables
+\endgroup
+
+\printacronyms
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% FOREWORD (OPTIONAL)
+\begin{foreword}
+
+This technical memorandum documents the significant improvements and updates made to the ESAC (EQ-SANS Assisting Chatbot) system since its initial publication in SoftwareX journal. ESAC v1 represents a major advancement in AI-assisted neutron scattering experiment automation, incorporating modern AI techniques, enhanced user interfaces, and improved deployment capabilities.
+
+\end{foreword}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ABSTRACT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\mainmatter
+\begin{abstract}
+
+ESAC (EQ-SANS Assisting Chatbot) is an AI-powered desktop application designed to assist with creating, editing, and executing Python scripts for EQ-SANS (Extended Q-range Small Angle Neutron Scattering) experiments at the Spallation Neutron Source (SNS). Since its initial publication in SoftwareX journal, ESAC has undergone significant improvements including advanced AI modes, enhanced graphical user interface, multi-model support, and executable deployment. This report details the key improvements made to ESAC v1, including In-Context Learning (ICL) mode for comprehensive knowledge utilization, Retrieval-Augmented Generation (RAG) mode for targeted queries, integrated script editor with multi-tab support, real-time cost and token estimation, and PyInstaller-based executable distribution. These enhancements make ESAC more efficient, user-friendly, and accessible for neutron scattering researchers.
+
+\end{abstract}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DOCUMENT CONTENT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\acresetall
+
+\section{INTRODUCTION}
+\label{sec:intro}
+
+The original ESAC system, published in SoftwareX journal \autocite{esac_original}, represented a significant advancement in AI-assisted neutron scattering experiment automation. ESAC provided researchers with an interactive chatbot interface to generate Python scripts for EQ-SANS experiments at the Spallation Neutron Source (SNS). However, the original implementation had several limitations including basic AI capabilities, limited user interface features, and dependency on Python runtime environments.
+
+ESAC v1 addresses these limitations through comprehensive improvements in AI architecture, user interface design, and deployment methodology. The system now supports multiple AI modes, provides an integrated development environment, and can be deployed as a standalone executable. This report details these improvements and demonstrates how ESAC v1 enhances the neutron scattering research workflow.
+
+\section{AI ARCHITECTURE IMPROVEMENTS}
+\label{sec:ai_improvements}
+
+\subsection{In-Context Learning (ICL) Mode}
+\label{subsec:icl_mode}
+
+The most significant AI improvement in ESAC v1 is the implementation of In-Context Learning (ICL) mode. Unlike the original system's basic prompt engineering, ICL mode loads the entire knowledge base (approximately 150,000 tokens) into the AI context window. This approach provides several advantages:
+
+\begin{itemize}
+  \item \textbf{Comprehensive Knowledge Access}: The AI has access to all available documentation, function definitions, and historical scripts simultaneously
+  \item \textbf{Reduced Hallucination}: With complete context available, the AI generates more accurate and reliable code
+  \item \textbf{Complex Reasoning}: The system can draw connections between different aspects of EQ-SANS experiments
+  \item \textbf{Consistency}: Generated scripts maintain consistency with established instrument protocols and safety procedures
+\end{itemize}
+
+\subsection{Retrieval-Augmented Generation (RAG) Mode}
+\label{subsec:rag_mode}
+
+Complementing ICL mode, ESAC v1 introduces Retrieval-Augmented Generation (RAG) mode for scenarios requiring targeted responses. RAG mode implements an intelligent retrieval system that:
+
+\begin{itemize}
+  \item \textbf{Smart Query Analysis}: Parses user queries to identify relevant keywords, function names, and technical terms
+  \item \textbf{Relevance Scoring}: Scores knowledge base sections based on multiple criteria including exact matches, function references, and technical terminology
+  \item \textbf{Context Extraction}: Extracts relevant code sections and documentation with surrounding context
+  \item \textbf{Efficient Processing}: Provides faster responses for specific queries while maintaining accuracy
+\end{itemize}
+
+\subsection{Multi-Model Support}
+\label{subsec:multi_model}
+
+ESAC v1 supports multiple AI models through OpenRouter API, allowing users to choose the most appropriate model for their needs:
+
+\begin{table}[ht]
+  \centering
+  \caption{Supported AI Models in ESAC v1}
+  \label{tab:models}
+  \begin{tabular}{l l l}
+    \toprule
+    Model & Provider & Use Case \\
+    \midrule
+    GPT-4o-mini & OpenAI & Fast, cost-effective general tasks \\
+    GPT-4o & OpenAI & Complex reasoning and code generation \\
+    Claude-3-Haiku & Anthropic & Quick responses with good reasoning \\
+    Claude-3-Sonnet & Anthropic & Advanced analysis and planning \\
+    DeepSeek & DeepSeek & Alternative high-performance option \\
+    Grok & xAI & Creative problem-solving \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{USER INTERFACE ENHANCEMENTS}
+\label{sec:ui_improvements}
+
+\subsection{Integrated Script Editor}
+\label{subsec:script_editor}
+
+ESAC v1 features a comprehensive script editor that transforms the application from a simple chatbot into a complete development environment:
+
+\begin{itemize}
+  \item \textbf{Multi-Tab Support}: Users can work with multiple scripts simultaneously
+  \item \textbf{Syntax Highlighting}: Python syntax highlighting for improved code readability
+  \item \textbf{Save/Load Functionality}: Persistent storage of scripts with automatic backup
+  \item \textbf{Line Numbers}: Professional code editing experience
+  \item \textbf{Search and Replace}: Efficient code modification capabilities
+\end{itemize}
+
+\subsection{Enhanced Chat Interface}
+\label{subsec:chat_interface}
+
+The chat interface has been significantly improved with several new features:
+
+\begin{itemize}
+  \item \textbf{Copy to Editor}: One-click transfer of generated code to the script editor
+  \item \textbf{Conversation History}: Persistent chat history across sessions
+  \item \textbf{Token Tracking}: Real-time monitoring of API usage and costs
+  \item \textbf{Model Selection}: Dynamic switching between AI models
+  \item \textbf{Context Awareness}: Automatic inclusion of current script context in queries
+\end{itemize}
+
+\subsection{Time and Cost Estimation}
+\label{subsec:estimation}
+
+ESAC v1 provides real-time estimation capabilities:
+
+\begin{itemize}
+  \item \textbf{Execution Time}: Estimates script runtime based on proton charge and instrument parameters
+  \item \textbf{API Cost Tracking}: Monitors token usage and calculates costs in real-time
+  \item \textbf{Model Comparison}: Shows cost differences between available models
+  \item \textbf{Budget Awareness}: Helps users optimize their AI usage
+\end{itemize}
+
+\section{DEPLOYMENT AND DISTRIBUTION}
+\label{sec:deployment}
+
+\subsection{Executable Distribution}
+\label{subsec:executable}
+
+The most significant deployment improvement is the PyInstaller-based executable distribution:
+
+\begin{itemize}
+  \item \textbf{Zero Dependencies}: Users can run ESAC without installing Python or any dependencies
+  \item \textbf{SSL Certificate Bundling}: Includes secure HTTPS certificates for API communication
+  \item \textbf{Cross-Platform}: Single executable works across Linux, Windows, and macOS
+  \item \textbf{Configuration Management}: Secure encrypted storage of API keys and settings
+  \item \textbf{Automatic Updates}: Self-contained application with no external dependencies
+\end{itemize}
+
+\subsection{Knowledge Base Management}
+\label{subsec:knowledge_management}
+
+ESAC v1 includes sophisticated knowledge base management:
+
+\begin{itemize}
+  \item \textbf{Modular Knowledge}: Organized knowledge files for different aspects of EQ-SANS
+  \item \textbf{Development Integration}: Automatic loading of development scripts when available
+  \item \textbf{Version Control}: Git integration for knowledge base updates
+  \item \textbf{Extensibility}: Easy addition of new knowledge domains
+\end{itemize}
+
+\section{TECHNICAL IMPLEMENTATION}
+\label{sec:technical}
+
+\subsection{Architecture Overview}
+\label{subsec:architecture}
+
+ESAC v1 follows a modular architecture with clear separation of concerns:
+
+\begin{itemize}
+  \item \textbf{GUI Layer}: PyQt5-based interface with chat widget and script editor
+  \item \textbf{Service Layer}: LLM service, knowledge manager, and configuration manager
+  \item \textbf{AI Integration}: OpenRouter API client with streaming support
+  \item \textbf{Deployment Layer}: PyInstaller configuration for executable generation
+\end{itemize}
+
+\subsection{Performance Optimizations}
+\label{subsec:performance}
+
+Several performance optimizations have been implemented:
+
+\begin{itemize}
+  \item \textbf{Streaming Responses}: Real-time AI response streaming for better user experience
+  \item \textbf{Context Caching}: Intelligent caching of knowledge base content
+  \item \textbf{Memory Management}: Efficient handling of large knowledge bases
+  \item \textbf{Threading}: Non-blocking UI during AI processing
+\end{itemize}
+
+\section{COMPARISON WITH ORIGINAL VERSION}
+\label{sec:comparison}
+
+\begin{table}[ht]
+  \centering
+  \caption{Feature Comparison: ESAC Original vs ESAC v1}
+  \label{tab:comparison}
+  \begin{tabular}{l l l}
+    \toprule
+    Feature & Original ESAC & ESAC v1 \\
+    \midrule
+    AI Mode & Basic prompting & ICL + RAG modes \\
+    User Interface & Simple chat & Integrated IDE \\
+    Script Editor & None & Multi-tab with syntax highlighting \\
+    Model Support & Single model & 6+ models via OpenRouter \\
+    Deployment & Python script & Standalone executable \\
+    Cost Tracking & None & Real-time token/cost monitoring \\
+    Knowledge Base & Static & Dynamic with relevance scoring \\
+    Context Window & Limited & Up to 150K tokens \\
+    Save/Load & None & Full project persistence \\
+    Time Estimation & None & Proton charge-based calculation \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{CONCLUSION}
+\label{sec:conclusion}
+
+ESAC v1 represents a significant advancement over the original SoftwareX publication, transforming a basic chatbot into a comprehensive AI-assisted development environment for neutron scattering experiments. The key improvements include advanced AI modes (ICL and RAG), integrated script editing capabilities, multi-model support, and executable distribution.
+
+These enhancements make ESAC v1 more accessible, efficient, and powerful for researchers working with EQ-SANS experiments at SNS. The system now provides a complete workflow from experiment planning to script execution, with intelligent AI assistance throughout the process.
+
+ESAC v1 is available for download from the GitHub repository at \url{https://github.com/cw-do/esac-v1}. The repository includes the complete source code, executable binaries, and documentation for installation and usage.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERENCES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{REFERENCES}
+\printbibliography[heading=none]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% APPENDICES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+\acresetall
+
+\section{INSTALLATION INSTRUCTIONS}
+\label{app:installation}
+
+\subsection{From Source}
+\label{subsec:from_source}
+
+\begin{enumerate}
+  \item Clone the repository:
+  \begin{lstlisting}[language=bash]
+  git clone https://github.com/cw-do/esac-v1.git
+  cd esac-v1
+  \end{lstlisting}
+
+  \item Install dependencies:
+  \begin{lstlisting}[language=bash]
+  pip install -r requirements.txt
+  \end{lstlisting}
+
+  \item Run the application:
+  \begin{lstlisting}[language=bash]
+  python main.py
+  \end{lstlisting}
+\end{enumerate}
+
+\subsection{Using Executable}
+\label{subsec:using_executable}
+
+\begin{enumerate}
+  \item Download the appropriate executable from the GitHub releases
+  \item Make the file executable (Linux/macOS):
+  \begin{lstlisting}[language=bash]
+  chmod +x esac_v1_executable
+  \end{lstlisting}
+  \item Run the executable directly
+\end{enumerate}
+
+\section{CONFIGURATION}
+\label{app:configuration}
+
+\subsection{API Key Setup}
+\label{subsec:api_setup}
+
+\begin{enumerate}
+  \item Obtain an API key from \url{https://openrouter.ai/}
+  \item Launch ESAC v1
+  \item The application will prompt for API key configuration
+  \item Keys are encrypted and stored securely
+\end{enumerate}
+
+\subsection{Model Configuration}
+\label{subsec:model_config}
+
+Users can select from multiple AI models through the interface dropdown. Each model has different performance characteristics:
+
+\begin{itemize}
+  \item \textbf{GPT-4o-mini}: Fastest, most cost-effective
+  \item \textbf{GPT-4o}: Best for complex code generation
+  \item \textbf{Claude-3-Sonnet}: Excellent for reasoning tasks
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Back cover page
+\backmatter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% end of esac_update.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
