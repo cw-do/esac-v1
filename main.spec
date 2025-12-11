@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
+from PyInstaller.utils.hooks import collect_data_files
 
 a = Analysis(
     ['main.py'],
@@ -15,6 +16,9 @@ a = Analysis(
         ('gui', 'gui'),  # Include GUI modules
         ('services', 'services'),  # Include service modules
         ('config', 'config'),  # Include config files
+        # Include tiktoken package data (encodings, registry files) so model encodings
+        # like cl100k_base are available in frozen executables.
+        *collect_data_files('tiktoken'),
     ],
     hiddenimports=[
         # PyQt5 core dependencies
@@ -64,6 +68,8 @@ a = Analysis(
         'OpenSSL',
         'OpenSSL.crypto',
         'OpenSSL.SSL',
+        # Ensure tiktoken internals are available to the frozen app
+        'tiktoken',
     ],
     hookspath=[],
     hooksconfig={},
