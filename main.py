@@ -232,6 +232,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--largefont', action='store_true', help='Increase overall font size by +2 points')
     parser.add_argument('--font-offset', type=int, default=2, help='Number of points to increase when --largefont is used')
+    parser.add_argument('--showtoken', action='store_true', help='Show token and cost info in the chat UI')
     args, unknown = parser.parse_known_args()
 
     app = QApplication(sys.argv)
@@ -250,6 +251,6 @@ if __name__ == "__main__":
     # Pass base monospace font size to editor so code font scales as well
     base_mono = app.font().pointSize() if app.font().pointSize() > 0 else 10
 
-    window = MainWindow(base_mono_font_size=base_mono)
+    window = MainWindow(base_mono_font_size=base_mono, show_token=args.showtoken)
     window.show()
     sys.exit(app.exec_())

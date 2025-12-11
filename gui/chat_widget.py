@@ -98,12 +98,13 @@ class ChatWorker(QThread):
 class ChatWidget(QTabWidget):
     copy_to_editor_signal = pyqtSignal(object)
 
-    def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None):
+    def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None, show_token=True):
         super().__init__()
         self.llm_service = llm_service
         self.knowledge_manager = knowledge_manager
         self.config_manager = config_manager
         self.editor_widget = editor_widget
+        self.show_token = show_token
         self.icl = True  # Always hybrid
         self.last_speaker = None  # Track who spoke last for adding blank lines
         
@@ -113,12 +114,20 @@ class ChatWidget(QTabWidget):
         
         # Pricing per model (approximate USD per 1M tokens)
         self.pricing = {
+            # OpenAI Models (Updated)
             'openai/gpt-4o-mini': {'input': 0.15, 'output': 0.60},
             'openai/gpt-4o': {'input': 2.50, 'output': 10.00},
             'openai/gpt-3.5-turbo': {'input': 0.50, 'output': 1.50},
+
+            # Anthropic Models (Updated/Clarified)
             'anthropic/claude-3-haiku': {'input': 0.25, 'output': 1.25},
             'anthropic/claude-3-sonnet': {'input': 3.00, 'output': 15.00},
-            'meta-llama/llama-3.1-8b-instruct': {'input': 0.10, 'output': 0.20},
+
+            # Google Model (Crucial Addition: Gemini 2.5 Flash)
+            'google/gemini-2.5-flash': {'input': 0.30, 'output': 2.50}, 
+            
+            # Meta Llama Models (Updated with OpenRouter rates)
+            'meta-llama/llama-3.1-8b-instruct': {'input': 0.02, 'output': 0.03},
             'meta-llama/llama-3.1-70b-instruct': {'input': 0.50, 'output': 1.00},
         }
 
@@ -171,13 +180,15 @@ class ChatWidget(QTabWidget):
         self.model_combo.currentTextChanged.connect(self.change_model)
         model_layout.addWidget(self.model_combo)
         
-        # Token display label
+        # Token display label (optional)
         self.token_label = QLabel("Tokens: 0 ($0.00)")
+        self.token_label.setVisible(self.show_token)
         model_layout.addWidget(self.token_label)
         
         # Reset token counter button
         self.reset_tokens_button = QPushButton("Reset")
         self.reset_tokens_button.clicked.connect(self.reset_token_counter)
+        self.reset_tokens_button.setVisible(self.show_token)
         model_layout.addWidget(self.reset_tokens_button)
         
         chat_layout.addLayout(model_layout)
