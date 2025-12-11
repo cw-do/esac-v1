@@ -54,11 +54,20 @@ class MainWindow(QMainWindow):
         for filename in sorted(self.knowledge_manager.local_knowledge.keys()):
             print(f"  - {filename}")
         
-        # Calculate total tokens for ICL part
+        # Calculate total tokens for ICL part (best-effort)
         context = self.knowledge_manager.get_full_context(max_length=200000)
-        encoding = tiktoken.encoding_for_model("gpt-4")  # Use GPT-4 encoding as reference
-        tokens = len(encoding.encode(context))
-        print(f"Total tokens in ICL context: {tokens}")
+        try:
+            # tiktoken may not be fully available in frozen PyInstaller bundles;
+            # attempt to use the model encoding, but fall back to a conservative
+            # character-based estimate if the encoding is unavailable.
+            encoding = tiktoken.encoding_for_model("gpt-4")  # Use GPT-4 encoding as reference
+            tokens = len(encoding.encode(context))
+        except Exception as e:
+            # Log the issue and use a conservative estimate (~4 chars/token)
+            print(f"Warning: tiktoken encoding unavailable ({e}). Using fallback token estimate.")
+            tokens = max(0, int(len(context) / 4))
+
+        print(f"Total tokens in ICL context (est): {tokens}")
         print(f"Within typical context limit (128k): {tokens < 128000}")
 
         # Create central widget
@@ -109,26 +118,30 @@ class MainWindow(QMainWindow):
         self.settings_button.clicked.connect(self.show_settings)
         button_layout.addWidget(self.settings_button)
 
-        # Add stretch to push PC controls to the right
+        # Add stretch to push the grouped PC controls to the right
         button_layout.addStretch()
 
-        # Proton charge input section
-        pc_layout = QHBoxLayout()
-        pc_layout.addWidget(QLabel("PC per hour:"))
-        self.pc_input = QLineEdit("5.2")
-        self.pc_input.setFixedWidth(50)
-        pc_layout.addWidget(self.pc_input)
-        pc_layout.addWidget(QLabel("  "))  # Small spacer
-        button_layout.addLayout(pc_layout)
+        # Compact group for Proton charge, Estimate button, and result label
+        compact_pc_group = QHBoxLayout()
+        compact_pc_group.setSpacing(8)
 
-        # Estimate time button
+        compact_pc_group.addWidget(QLabel("PC per hour:"))
+        self.pc_input = QLineEdit("5.2")
+        self.pc_input.setFixedWidth(60)
+        compact_pc_group.addWidget(self.pc_input)
+
+        # Estimate time button (slightly wider to improve click target)
         self.estimate_button = QPushButton("Estimate Time")
+        self.estimate_button.setFixedWidth(140)
         self.estimate_button.clicked.connect(self.estimate_time)
-        button_layout.addWidget(self.estimate_button)
+        compact_pc_group.addWidget(self.estimate_button)
 
         # Estimated time label
         self.time_label = QLabel("Est. time: --")
-        button_layout.addWidget(self.time_label)
+        compact_pc_group.addWidget(self.time_label)
+
+        # Add the compact group to the main button layout
+        button_layout.addLayout(compact_pc_group)
 
         # Progress bar
         self.progress_bar = QProgressBar()
