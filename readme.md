@@ -11,7 +11,7 @@ ESAC v1 is an AI-powered desktop application designed to assist with creating, e
 - **Token & Cost Tracking**: Real-time monitoring of API usage and costs with reset functionality.
 - **Script Editor**: Advanced Python editor with syntax highlighting, line numbers, and code execution.
 - **Knowledge Integration**: Access to historical scripts, instrument documentation, and EQ-SANS specific functions.
-- **File Search**: Fast, non-blocking search through the knowledge base with background processing to maintain responsive UI during searches.
+- **File Search**: Quickly find and load past scripts for repeated use, with non-blocking background processing to maintain responsive UI during searches.
 - **Time Estimation**: Real-time estimation of script execution time based on proton charge and timing parameters.
 - **Simulation Mode**: Check scripts for syntax errors without executing.
 - **Model Selection**: Choose from multiple LLM models (GPT-4o-mini, Gemini Flash, DeepSeek, Grok).
