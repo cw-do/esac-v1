@@ -7,6 +7,7 @@ ESAC v1 is an AI-powered desktop application designed to assist with creating, e
 - **AI-Powered Chat**: Interactive chatbot that understands EQ-SANS functions and helps write/edit scripts based on experimental plans.
 - **In-Context Learning (ICL)**: Default mode using full knowledge base context for more comprehensive responses.
 - **Retrieval-Augmented Generation (RAG)**: Smart retrieval mode that provides targeted, relevant context for specific queries.
+- **Q-Range Calculator**: Instant calculation of Q-ranges, wavelengths, and beam parameters for specific instrument configurations (e.g., "what is q range of 4m 2.5a config"). Loads config files from `/home/controls/var/QRangeConfigurations` and computes values using beamline-specific formulas.
 - **Token & Cost Tracking**: Real-time monitoring of API usage and costs with reset functionality.
 - **Script Editor**: Advanced Python editor with syntax highlighting, line numbers, and code execution.
 - **Knowledge Integration**: Access to historical scripts, instrument documentation, and EQ-SANS specific functions.
@@ -82,6 +83,27 @@ The application window will open with the script editor on the left and chat int
 - Ask questions about EQ-SANS functions (e.g., "What is runsampleid?")
 - Request script modifications (e.g., "Add a delay of 600 seconds")
 - Get help with experimental planning
+- Query Q-ranges for configurations (e.g., "what is q range of 4m 2.5a config", "show me q range of 9m 15a configuration")
+
+### Q-Range Calculator
+
+The chatbot includes a specialized Q-range calculator that can instantly compute scattering parameters for EQ-SANS configurations:
+
+- **Query Format**: Ask natural language questions like "q range of 4m 2.5a config" or "what's the Q-range for the 9m setup at 15Å"
+- **Automatic Matching**: Uses AI to match your query to available instrument configurations
+- **Calculated Parameters**: Returns QMin, QMax, QMaxEdge, wavelength ranges, TOF ranges, and beam diameter
+- **Config Sources**: Loads parameters from `.sav` files in `/home/controls/var/QRangeConfigurations/`
+- **Frequency Handling**: Automatically selects 60Hz configurations by default; supports both 30Hz and 60Hz modes
+
+Example output:
+```
+QMin: 0.0025 Å⁻¹
+QMax: 0.45 Å⁻¹  
+QMaxEdge: 0.38 Å⁻¹
+Wavelength Min: 10.0 Å
+Wavelength Max: 15.2 Å
+...
+```
 
 ### Token & Cost Tracking
 
@@ -99,6 +121,7 @@ The application window will open with the script editor on the left and chat int
 - **LLM Model**: Select from available models in the chat interface.
 - **Proton Charge Rate**: Customize the PC to time conversion ratio.
 - **Knowledge Base**: The app automatically loads knowledge from the `knowledge/` directory.
+- **Q-Range Configs**: Configurations loaded from `/home/controls/var/QRangeConfigurations/` for calculator functionality.
 
 ## Dependencies
 
@@ -115,6 +138,7 @@ See `requirements.txt` for exact versions.
 - **API Errors**: Check your OpenRouter API key and internet connection.
 - **Import Errors**: Ensure all dependencies are installed.
 - **Knowledge Not Loading**: Verify files in `knowledge/` directory are readable.
+- **Q-Range Calculation Errors**: Check that config files exist in `/home/controls/var/QRangeConfigurations/` and are readable.
 - **Script Execution Issues**: Check Python path and permissions for script execution.
 
 ## Development
@@ -126,6 +150,7 @@ For developers interested in contributing:
 - GUI components: `gui/` directory
 - Services: `services/` directory
 - Knowledge files: `knowledge/` directory
+- Q-Range Calculator: `services/qrange_calculator.py`
 
 ## License
 
