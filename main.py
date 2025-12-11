@@ -33,6 +33,15 @@ class MainWindow(QMainWindow):
         self.knowledge_manager = KnowledgeManager()
         self.script_executor = ScriptExecutor()
 
+        # Load knowledge base
+        self.knowledge_manager.load_or_build_index()
+
+        # Print ICL context files if in ICL mode
+        if self.icl:
+            print("ICL Mode: Files included in context:")
+            for filename in sorted(self.knowledge_manager.local_knowledge.keys()):
+                print(f"  - {filename}")
+
         # Create central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
