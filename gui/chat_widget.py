@@ -349,6 +349,54 @@ class ChatWidget(QTabWidget):
                 source_info = "Knowledge Base Sources:\n" + "\n".join(f"- {filename}" for filename in sorted(self.knowledge_manager.local_knowledge.keys()))
                 context = source_info + "\n\n" + context
 
+            # Check if message is asking for Q-range calculation
+            qrange_pattern = r'q\s*range.*(\d+(?:\.\d+)?m\s*\d+(?:\.\d+)?a)\s*config'
+            qrange_match = re.search(qrange_pattern, message.lower())
+            if qrange_match:
+                config_name = qrange_match.group(1).replace(' ', '').replace('m', 'm ').replace('a', 'a')
+                # Try to find the exact config name
+                available_configs = []
+                if "Currently_Existing_Configurations" in self.knowledge_manager.local_knowledge:
+                    content = self.knowledge_manager.local_knowledge["Currently_Existing_Configurations"]
+                    # Extract config names from the content
+                    import re
+                    config_list_match = re.search(r'```\n(.*?)\n```', content, re.DOTALL)
+                    if config_list_match:
+                        available_configs = [line.strip() for line in config_list_match.group(1).split('\n') if line.strip()]
+                
+                # Find matching config
+                matched_config = None
+                for config in available_configs:
+                    if config_name.lower().replace(' ', '') in config.lower().replace(' ', ''):
+                        matched_config = config
+                        break
+                
+                if matched_config:
+                    qrange_results = self.knowledge_manager.calculate_qrange(matched_config)
+                    if qrange_results:
+                        response = f"Q-range calculation for configuration '{matched_config}':\n\n"
+                        for key, value in qrange_results.items():
+                            if isinstance(value, float):
+                                response += f"{key}: {value:.4f}\n"
+                            else:
+                                response += f"{key}: {value}\n"
+                        self.add_message("AI", response)
+                        self.conversation_history.append({"role": "assistant", "content": response})
+                        self.input_field.clear()
+                        return
+                    else:
+                        response = f"Could not calculate Q-range for configuration '{matched_config}'. Config data may be invalid."
+                        self.add_message("AI", response)
+                        self.conversation_history.append({"role": "assistant", "content": response})
+                        self.input_field.clear()
+                        return
+                else:
+                    response = f"Configuration '{config_name}' not found. Available configurations: {', '.join(available_configs[:10])}"
+                    self.add_message("AI", response)
+                    self.conversation_history.append({"role": "assistant", "content": response})
+                    self.input_field.clear()
+                    return
+
             # Start worker thread for LLM response
             self.worker = ChatWorker(self.llm_service, self.knowledge_manager, enhanced_message, context, self.conversation_history.copy(), self.icl)
             self.worker.response_chunk.connect(self.on_response_chunk)

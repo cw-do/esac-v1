@@ -48,6 +48,21 @@ ESAC v1 will be implemented as a native Python desktop application using PyQt5/P
 - `services/llm_service.py`: Handles OpenRouter API communication, model selection, and streaming responses.
 - `services/knowledge_manager.py`: Loads and searches knowledge from specified directories.
 - `services/script_executor.py`: Manages script execution via subprocess and time estimation.
+- `services/qrange_calculator.py`: Calculates Q-range parameters for EQ-SANS configurations.
+
+### 3. Q-Range Calculator Feature
+The chatbot now supports direct Q-range calculations for instrument configurations. Users can query configurations like "what is q range of 4m 2.5a config" and receive calculated values including:
+- QMin, QMaxEdge, QMaxCorner
+- Wavelength ranges (WLMin, WLMax, WL2Min, WL2Max for frame-skipping)
+- TOF ranges
+- Beam diameter
+
+The feature:
+- Parses natural language queries for config names
+- Loads configuration data from /home/controls/var/QRangeConfigurations/*.sav files
+- Uses calculation logic adapted from qplan.py
+- Returns formatted results directly in chat without LLM processing
+- Handles config not found gracefully
 - `services/config_manager.py`: Manages application settings and secure storage of API keys.
 
 ### 3. Knowledge Processing

@@ -4,6 +4,7 @@ from PyPDF2 import PdfReader
 import json
 import hashlib
 import sys
+from services.qrange_calculator import QRangeCalculator
 
 # Priority files loaded for ICL (full context) - update this list as needed
 PRIORITY_FILES = [
@@ -277,4 +278,17 @@ class KnowledgeManager:
                 return "No relevant knowledge found for this query."
         
         return '\n\n'.join(context_parts)
+
+    def get_qrange_config_data(self, config_name):
+        """Get Q-range configuration data by name"""
+        calculator = QRangeCalculator()
+        return calculator.load_config_data(config_name)
+
+    def calculate_qrange(self, config_name):
+        """Calculate Q-range for a given configuration"""
+        config_data = self.get_qrange_config_data(config_name)
+        if config_data:
+            calculator = QRangeCalculator()
+            return calculator.calculate_q_range(config_data)
+        return None
 
