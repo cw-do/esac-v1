@@ -124,6 +124,8 @@ Wavelength Max: 15.2 Å
 - **Knowledge Base**: The app automatically loads knowledge from the `knowledge/` directory.
 - **Q-Range Configs**: Configurations loaded from `/home/controls/var/QRangeConfigurations/` for calculator functionality.
 
+**Security note:** Local configuration files and environment variable stores are treated as sensitive. The repository's `.gitignore` excludes a local `config/` directory and `env.txt` to prevent accidental commits of API keys. Store secrets locally in a `.env` file or `config/env.txt` (these files will be encrypted on first run by the application) and do not commit them to source control. If a sensitive file was previously committed, remove it from the repository history and working tree.
+
 ## Dependencies
 
 - PyQt5: GUI framework

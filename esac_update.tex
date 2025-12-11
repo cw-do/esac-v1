@@ -30,11 +30,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%% AUTHOR'S LIST
-\author{Crawford, Samuel T. \and Do, Changwoo}
+\author{Do, Changwoo \and Nagy, Gergely \and Heller, William T.}
 
 %%% DOCUMENT TITLE
-\title{ESAC v1: Enhanced AI-Powered Chatbot for \\ EQ-SANS Experiment Automation \\ Improvements and Updates}
-
+\title{ESAC v1: Enhanced AI-Powered Chatbot for EQ-SANS Experiment Automation Improvements and Updates}
 %%% PUBLICATION DATE
 \date{\today}
 
@@ -87,9 +86,7 @@ This technical memorandum documents the significant improvements and updates mad
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \mainmatter
 \begin{abstract}
-
-ESAC (EQ-SANS Assisting Chatbot) is an AI-powered desktop application designed to assist with creating, editing, and executing Python scripts for EQ-SANS (Extended Q-range Small Angle Neutron Scattering) experiments at the Spallation Neutron Source (SNS). Since its initial publication in SoftwareX journal, ESAC has undergone significant improvements including advanced AI modes, enhanced graphical user interface, multi-model support, and executable deployment. This report details the key improvements made to ESAC v1, including In-Context Learning (ICL) mode for comprehensive knowledge utilization, Retrieval-Augmented Generation (RAG) mode for targeted queries, integrated script editor with multi-tab support, real-time cost and token estimation, and PyInstaller-based executable distribution. These enhancements make ESAC more efficient, user-friendly, and accessible for neutron scattering researchers.
-
+ESAC (EQ-SANS Assisting Chatbot) is an advanced AI-powered application designed to streamline the workflow of neutron scattering experiments at the Spallation Neutron Source (SNS). This report documents the significant advancements in ESAC v1, which include the integration of a combined In-Context Learning (ICL) + Retrieval-Augmented Generation (RAG) capability, a robust integrated development environment, and standalone executable distribution. These enhancements address the limitations of the original version, making ESAC v1 a transformative tool for researchers. The report also discusses the technical challenges encountered during development and their resolution, highlighting the impact of these improvements on the neutron scattering research community.
 \end{abstract}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -100,29 +97,53 @@ ESAC (EQ-SANS Assisting Chatbot) is an AI-powered desktop application designed t
 \section{INTRODUCTION}
 \label{sec:intro}
 
-The original ESAC system, published in SoftwareX journal \autocite{esac_original}, represented a significant advancement in AI-assisted neutron scattering experiment automation. ESAC provided researchers with an interactive chatbot interface to generate Python scripts for EQ-SANS experiments at the Spallation Neutron Source (SNS). However, the original implementation had several limitations including basic AI capabilities, limited user interface features, and dependency on Python runtime environments.
+Neutron scattering experiments are critical for understanding the structural and dynamic properties of materials. However, the complexity of experiment planning and data analysis often poses challenges for researchers. The original ESAC system, introduced in SoftwareX \autocite{esac_original}, aimed to simplify this process by providing an AI-powered chatbot for generating Python scripts tailored to EQ-SANS experiments. Despite its innovative approach, the initial version had several limitations, including basic AI capabilities, a lack of advanced user interface features, and dependency on Python runtime environments.
 
-ESAC v1 addresses these limitations through comprehensive improvements in AI architecture, user interface design, and deployment methodology. The system now supports multiple AI modes, provides an integrated development environment, and can be deployed as a standalone executable. This report details these improvements and demonstrates how ESAC v1 enhances the neutron scattering research workflow.
+ESAC v1 builds upon this foundation, addressing these shortcomings through a series of targeted improvements. By integrating advanced AI modes, enhancing the graphical user interface, and enabling standalone executable distribution, ESAC v1 transforms the application into a comprehensive tool for neutron scattering research. This report provides a detailed account of these advancements, their implementation, and their impact on the research workflow.
 
 \section{AI ARCHITECTURE IMPROVEMENTS}
 \label{sec:ai_improvements}
 
-\subsection{In-Context Learning (ICL) Mode}
+\subsection{In-Context Learning (ICL) — part of the combined ICL+RAG approach}
 \label{subsec:icl_mode}
 
-The most significant AI improvement in ESAC v1 is the implementation of In-Context Learning (ICL) mode. Unlike the original system's basic prompt engineering, ICL mode loads the entire knowledge base (approximately 150,000 tokens) into the AI context window. This approach provides several advantages:
+A core AI improvement in ESAC v1 is the adoption of In-Context Learning (ICL) as part of a combined ICL+RAG approach. Unlike the original system's basic prompt engineering, the ICL capability assembles a rich, task-specific knowledge payload (up to roughly 150{,}000 tokens) and injects it into the model's context window when appropriate. This design provides several advantages:
 
 \begin{itemize}
-  \item \textbf{Comprehensive Knowledge Access}: The AI has access to all available documentation, function definitions, and historical scripts simultaneously
-  \item \textbf{Reduced Hallucination}: With complete context available, the AI generates more accurate and reliable code
-  \item \textbf{Complex Reasoning}: The system can draw connections between different aspects of EQ-SANS experiments
-  \item \textbf{Consistency}: Generated scripts maintain consistency with established instrument protocols and safety procedures
+  \item \textbf{Comprehensive knowledge access}: The AI can simultaneously access documentation, function definitions, configuration descriptions, and representative historical scripts.
+  \item \textbf{Reduced hallucination}: With authoritative local context available, the AI is less likely to invent APIs, parameters, or workflows.
+  \item \textbf{Complex reasoning}: The system can draw connections across experiment planning, data reduction, and safety constraints that span multiple documents.
+  \item \textbf{Consistency}: Generated scripts remain aligned with established instrument protocols, naming conventions, and safety procedures.
 \end{itemize}
 
-\subsection{Retrieval-Augmented Generation (RAG) Mode}
+The ICL knowledge context is the curated set of documents, code, and metadata included in the in-context payload when invoking the LLM in an ICL-style call. It typically includes:
+
+\begin{itemize}
+  \item \textbf{Instrument reference material}: manuals, configuration descriptions, and safety procedures for EQ-SANS.
+  \item \textbf{API and function documentation}: docstrings and short reference snippets for services such as \texttt{ScriptExecutor} and \texttt{KnowledgeManager}.
+  \item \textbf{Curated scan and script patterns}: canonical scan and reduction fragments (for example, from \texttt{eqsans\_scanfunctions\_live.py}).
+  \item \textbf{Historical scripts}: recent, high-quality reduction and scan scripts (e.g., from \texttt{/home/controls/var/tmp}).
+  \item \textbf{Configuration data}: parsed or summarized configuration files, notably Q-range configurations under \texttt{/home/controls/var/QRangeConfigurations/}.
+  \item \textbf{Knowledge-base notes}: concise guidance and how-tos from the \texttt{knowledge/} directory.
+  \item \textbf{Safety and compliance rules}: short, explicit rules that must not be violated by generated scripts.
+  \item \textbf{Session context}: a small window of recent chat and editor content capturing the user's immediate intent.
+\end{itemize}
+
+Including this curated context improves grounding and accuracy, ensures consistency with local conventions and safety rules, increases precision for Q-range and configuration calculations by reusing the same parsing logic and constants as the production environment, and reduces RAG retrieval round-trips (lowering latency and cost) by answering many queries directly from the in-context payload. It also enables cross-document reasoning, such as matching a configuration entry to a specific script fragment or beamline workflow.
+
+To keep ICL payloads efficient and safe, ESAC v1 applies several operational safeguards when assembling the context:
+
+\begin{itemize}
+  \item \textbf{Curated truncation}: fragments are ranked and trimmed to respect model token limits while preserving critical content.
+  \item \textbf{Caching}: frequently used fragments (e.g., standard scan templates and configuration schemas) are cached to speed assembly.
+  \item \textbf{Safe filtering}: sensitive information such as API keys, personally identifiable information (PII), and restricted logs is explicitly excluded.
+  \item \textbf{RAG fallback}: for unusually large or rare queries, a focused RAG retrieval step is used to append only the most relevant additional documents.
+\end{itemize}
+
+\subsection{Retrieval-Augmented Generation (RAG) — integrated with ICL}
 \label{subsec:rag_mode}
 
-Complementing ICL mode, ESAC v1 introduces Retrieval-Augmented Generation (RAG) mode for scenarios requiring targeted responses. RAG mode implements an intelligent retrieval system that:
+Integrated with the ICL capability, Retrieval-Augmented Generation (RAG) provides targeted retrieval and augmentation for queries that benefit from focused knowledge lookups. The combined approach enables the system to:
 
 \begin{itemize}
   \item \textbf{Smart Query Analysis}: Parses user queries to identify relevant keywords, function names, and technical terms
@@ -131,25 +152,25 @@ Complementing ICL mode, ESAC v1 introduces Retrieval-Augmented Generation (RAG) 
   \item \textbf{Efficient Processing}: Provides faster responses for specific queries while maintaining accuracy
 \end{itemize}
 
-\subsection{Multi-Model Support}
+The project's `knowledge/` directory contains the active, human-readable modules that the RAG system indexes for retrieval: the `module*.md` files are concise topical references (instrument theory, configuration snippets, analysis recipes, and experimental workflows) written for easy lookup. `module9.json` provides structured, machine-readable mappings such as named Q-range presets and calibration constants that the retriever can inject into prompts to avoid numeric guessing. The `rss-eqsans.pdf` file provides a canonical instrument overview for reference. However, these files are hidden if the executable is used.
+
+
+\subsection{Model Support}
 \label{subsec:multi_model}
 
-ESAC v1 supports multiple AI models through OpenRouter API, allowing users to choose the most appropriate model for their needs:
+ESAC v1 uses three production models (available via the openrouter API gateway) selected for a balance of latency, cost, and reasoning capability. The supported models are:
 
 \begin{table}[ht]
   \centering
-  \caption{Supported AI Models in ESAC v1}
+  \caption{Production Models Supported in ESAC v1}
   \label{tab:models}
   \begin{tabular}{l l l}
-    \toprule
-    Model & Provider & Use Case \\
+    	oprule
+    Model & Provider & Primary Use Case \\
     \midrule
-    GPT-4o-mini & OpenAI & Fast, cost-effective general tasks \\
-    GPT-4o & OpenAI & Complex reasoning and code generation \\
-    Claude-3-Haiku & Anthropic & Quick responses with good reasoning \\
-    Claude-3-Sonnet & Anthropic & Advanced analysis and planning \\
-    DeepSeek & DeepSeek & Alternative high-performance option \\
-    Grok & xAI & Creative problem-solving \\
+    gpt-4o-mini & OpenAI & Fast, cost-effective general tasks and interactive assistance \\
+    claude-3-haiku & Anthropic & Short, high-quality reasoning with conservative outputs \\
+    gemini-2.5-flash & Google & High-throughput generation with strong code/analysis performance \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -157,17 +178,38 @@ ESAC v1 supports multiple AI models through OpenRouter API, allowing users to ch
 \section{USER INTERFACE ENHANCEMENTS}
 \label{sec:ui_improvements}
 
+ESAC v1 introduces a modernized and feature-rich user interface that integrates a multi-tab Python script editor with an AI-powered chat panel. A screenshot of the main application window is shown in Figure~\ref{fig:ui_screenshot}, illustrating the split-pane layout, toolbar controls, model selector, token tracker, and time-estimation tools.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{screenshot.png}
+    \caption{ESAC v1 user interface, showing the multi-tab script editor (left), AI chat assistant (right), and bottom control panel with execution, simulation, model selection, cost tracking, and time estimation tools.}
+    \label{fig:ui_screenshot}
+\end{figure}
+
 \subsection{Integrated Script Editor}
 \label{subsec:script_editor}
 
 ESAC v1 features a comprehensive script editor that transforms the application from a simple chatbot into a complete development environment:
 
 \begin{itemize}
-  \item \textbf{Multi-Tab Support}: Users can work with multiple scripts simultaneously
-  \item \textbf{Syntax Highlighting}: Python syntax highlighting for improved code readability
-  \item \textbf{Save/Load Functionality}: Persistent storage of scripts with automatic backup
-  \item \textbf{Line Numbers}: Professional code editing experience
-  \item \textbf{Search and Replace}: Efficient code modification capabilities
+  \item \textbf{Multi-Tab Support}: Users can work with multiple scripts simultaneously.
+  \item \textbf{Syntax Highlighting}: Python syntax highlighting for improved readability.
+  \item \textbf{Save/Load Functionality}: Persistent storage of scripts with automatic backup.
+  \item \textbf{Line Numbers}: Provides a professional code editing experience.
+  \item \textbf{Search and Replace}: Supports efficient code editing and refactoring.
+\end{itemize}
+
+\subsection{File Search and Script Reuse}
+\label{subsec:file_search}
+
+To streamline repeated experimental workflows, ESAC v1 introduces an integrated file-search facility optimized for locating and reloading historical scripts. Key features:
+
+\begin{itemize}
+  \item \textbf{Purpose-built for reuse}: Designed to quickly find past scripts (by IPTS, user, filename, or content) so users can reload and re-run them with minimal effort.
+  \item \textbf{Non-blocking search}: File-system searches run in background threads to keep the UI responsive and avoid freezes during long scans.
+  \item \textbf{Search-to-load flow}: Search results are returned with indexed entries so users can issue simple commands like ``load script 3'' in the chat to copy the script into the editor.
+  \item \textbf{Recency-first ordering}: Results are sorted by modification time so the most recently used or edited scripts appear first.
 \end{itemize}
 
 \subsection{Enhanced Chat Interface}
@@ -176,11 +218,24 @@ ESAC v1 features a comprehensive script editor that transforms the application f
 The chat interface has been significantly improved with several new features:
 
 \begin{itemize}
-  \item \textbf{Copy to Editor}: One-click transfer of generated code to the script editor
-  \item \textbf{Conversation History}: Persistent chat history across sessions
-  \item \textbf{Token Tracking}: Real-time monitoring of API usage and costs
-  \item \textbf{Model Selection}: Dynamic switching between AI models
-  \item \textbf{Context Awareness}: Automatic inclusion of current script context in queries
+  \item \textbf{Copy to Editor}: One-click transfer of generated code to the script editor.
+  \item \textbf{Conversation History}: Persistent chat history preserved across sessions.
+  \item \textbf{Token Tracking}: Real-time monitoring of API usage, token counts, and estimated cost.
+  \item \textbf{Model Selection}: Dynamic switching between multiple LLM models.
+  \item \textbf{Context Awareness}: Automatically incorporates the active script or user intent when generating responses.
+\end{itemize}
+
+\subsection{Q-Range Calculator}
+\label{subsec:qrange}
+
+ESAC v1 includes a specialized Q-Range Calculator integrated into the chat interface to provide instant scattering parameter calculations for EQ-SANS instrument configurations. Highlights:
+
+\begin{itemize}
+  \item \textbf{Natural language queries}: Users can ask questions like ``what is the Q-range of 4m 2.5a config'' and receive computed QMin/QMax, wavelength ranges, TOF windows, and beam diameters.
+  \item \textbf{Config-driven}: The calculator loads instrument parameters from configuration files (\texttt{.sav} files) stored on the instrument host (default: \texttt{/home/controls/var/QRangeConfigurations/}).
+  \item \textbf{LLM-assisted matching}: When a direct filename match is ambiguous, the system uses the LLM to match a natural-language query to the best available configuration entry.
+  \item \textbf{Frequency handling}: Supports both 30Hz and 60Hz operation modes and selects the appropriate configuration automatically (defaults to 60Hz unless otherwise requested).
+  \item \textbf{Error reporting}: If configuration files are missing or unreadable, the UI reports clear, actionable errors and suggests the local path to place configs.
 \end{itemize}
 
 \subsection{Time and Cost Estimation}
@@ -189,11 +244,13 @@ The chat interface has been significantly improved with several new features:
 ESAC v1 provides real-time estimation capabilities:
 
 \begin{itemize}
-  \item \textbf{Execution Time}: Estimates script runtime based on proton charge and instrument parameters
-  \item \textbf{API Cost Tracking}: Monitors token usage and calculates costs in real-time
-  \item \textbf{Model Comparison}: Shows cost differences between available models
-  \item \textbf{Budget Awareness}: Helps users optimize their AI usage
+  \item \textbf{Execution Time}: Estimates experiment runtime based on proton charge rate and script content.
+  \item \textbf{API Cost Tracking}: Displays token consumption and cost associated with LLM usage.
+  \item \textbf{Model Comparison}: Helps users understand trade-offs between model speed, quality, and cost.
+  \item \textbf{Budget Awareness}: Enables users to manage LLM usage responsibly during long experiments.
 \end{itemize}
+
+
 
 \section{DEPLOYMENT AND DISTRIBUTION}
 \label{sec:deployment}
@@ -223,6 +280,17 @@ ESAC v1 includes sophisticated knowledge base management:
   \item \textbf{Extensibility}: Easy addition of new knowledge domains
 \end{itemize}
 
+\subsection{Security and Sensitive Configuration Handling}
+\label{subsec:security}
+
+To reduce the risk of accidental credential leakage, the development and packaging workflow now treats local configuration files and environment variable stores as sensitive:
+
+\begin{itemize}
+  \item \textbf{Ignored artifacts}: Local configuration files (for example, a \texttt{config/} directory or \texttt{env.txt}) are excluded from version control via \texttt{.gitignore} entries in the development repository.
+  \item \textbf{Local-only keys}: API keys and other secrets should be placed in a local \texttt{.env} or \texttt{config/env.txt} file and will be encrypted by the application on first run; these files must not be committed to source control.
+  \item \textbf{Developer workflow}: If a sensitive file was previously committed, it must be removed from the repository history and the working tree (the release process includes steps to ensure no keys remain in tagged releases).
+\end{itemize}
+
 \section{TECHNICAL IMPLEMENTATION}
 \label{sec:technical}
 
@@ -250,39 +318,171 @@ Several performance optimizations have been implemented:
   \item \textbf{Threading}: Non-blocking UI during AI processing
 \end{itemize}
 
-\section{COMPARISON WITH ORIGINAL VERSION}
-\label{sec:comparison}
+\subsection{API and Function Reference}
+\label{subsec:function_reference}
 
-\begin{table}[ht]
-  \centering
-  \caption{Feature Comparison: ESAC Original vs ESAC v1}
-  \label{tab:comparison}
-  \begin{tabular}{l l l}
-    \toprule
-    Feature & Original ESAC & ESAC v1 \\
-    \midrule
-    AI Mode & Basic prompting & ICL + RAG modes \\
-    User Interface & Simple chat & Integrated IDE \\
-    Script Editor & None & Multi-tab with syntax highlighting \\
-    Model Support & Single model & 6+ models via OpenRouter \\
-    Deployment & Python script & Standalone executable \\
-    Cost Tracking & None & Real-time token/cost monitoring \\
-    Knowledge Base & Static & Dynamic with relevance scoring \\
-    Context Window & Limited & Up to 150K tokens \\
-    Save/Load & None & Full project persistence \\
-    Time Estimation & None & Proton charge-based calculation \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+This subsection provides a concise developer-oriented reference for the primary modules and functions that were modified or added during the ESAC v1 development cycle. Each entry includes a short description, signature, parameters, return values, and important implementation notes or examples.
 
-\section{CONCLUSION}
-\label{sec:conclusion}
+\subsubsection{Main application: \texttt{MainWindow}}
+\label{subsub:mainwindow}
 
-ESAC v1 represents a significant advancement over the original SoftwareX publication, transforming a basic chatbot into a comprehensive AI-assisted development environment for neutron scattering experiments. The key improvements include advanced AI modes (ICL and RAG), integrated script editing capabilities, multi-model support, and executable distribution.
+\textbf{Class:} \texttt{MainWindow} (defined in \texttt{main.py})
 
-These enhancements make ESAC v1 more accessible, efficient, and powerful for researchers working with EQ-SANS experiments at SNS. The system now provides a complete workflow from experiment planning to script execution, with intelligent AI assistance throughout the process.
+\textbf{Constructor:}
+\begin{verbatim}
+MainWindow(icl: bool = True, font_size: str = 'normal')
+\end{verbatim}
 
-ESAC v1 is available for download from the GitHub repository at \url{https://github.com/cw-do/esac-v1}. The repository includes the complete source code, executable binaries, and documentation for installation and usage.
+Parameters:
+\begin{itemize}
+  \item \textbf{icl}: kept for backward compatibility; ESAC now operates in a combined ``ICL + RAG'' mode by default. The GUI title reflects this and mode selection CLI flags were removed.
+  \item \textbf{font\_size}: initial UI font size string: one of \{\texttt{small}, \texttt{normal}, \texttt{large}\}. Controlled via the CLI option \texttt{--font} and applied with \texttt{QApplication.setFont()}.
+\end{itemize}
+
+Important methods:
+\begin{itemize}
+  \item \texttt{run\_script(self)}: reads the current editor text and forwards it to \texttt{ScriptExecutor.run\_script} for execution.
+  \item \texttt{simulate\_script(self)}: performs a Python \texttt{compile()} syntax check on the editor content and updates \texttt{time\_label} with ``Syntax OK'' or the syntax error details.
+  \item \texttt{estimate\_time(self)}: parses the numeric \texttt{pc\_per\_hour} value from the \texttt{pc\_input} text field, calls \texttt{ScriptExecutor.estimate\_time(script\_content, pc\_per\_hour)}, and updates \texttt{time\_label} with the formatted estimate. Invalid numeric input results in ``Est. time: Invalid PC value''.
+\end{itemize}
+
+UI notes:
+\begin{itemize}
+  \item The ``PC per hour:'' label has been right-aligned and given a fixed width to reduce spacing and keep the control visually adjacent to its input. The layout groups PC controls (\texttt{pc\_input}, estimate button, \texttt{time\_label}) into a single \texttt{QHBoxLayout} called \texttt{pc\_layout}.
+  \item The previous CLI flags that allowed choosing between ICL and RAG were removed; the application now always runs using the combined ICL+RAG approach.
+\end{itemize}
+
+\subsubsection{Chat widget and worker}
+\label{subsub:chat}
+
+\textbf{Class:} \texttt{ChatWorker} (in \texttt{gui/chat\_widget.py})
+
+\textbf{Constructor:}
+\begin{verbatim}
+ChatWorker(llm_service, knowledge_manager, message,
+           context, conversation_history=None, icl=True)
+\end{verbatim}
+
+Behavior:
+\begin{itemize}
+  \item Runs in a background \texttt{QThread} to avoid blocking the GUI.
+  \item Uses \texttt{llm\_service.generate\_response\_stream(...)} to stream response chunks back to the UI via the \texttt{response\_chunk} signal.
+  \item On completion, emits \texttt{usage\_info} if token/cost usage data is available, followed by \texttt{finished}.
+\end{itemize}
+
+\textbf{Class:} \texttt{ChatWidget} (in \texttt{gui/chat\_widget.py})
+
+Key fields:
+\begin{itemize}
+  \item \texttt{last\_script\_search\_results}: list --- stores the most recent search result objects (each is a dict containing \texttt{filepath}, \texttt{filename}, \texttt{folder}, \texttt{match\_types}, \texttt{matches}, and \texttt{mtime}).
+  \item \texttt{last\_search\_term}: \texttt{str} --- the last normalized search term used to populate results.
+\end{itemize}
+
+Important methods and behaviors:
+\begin{itemize}
+  \item \texttt{handle\_user\_message(self, message)}: entry point for text submitted by the user. Implements a creation-vs-search heuristic: if the message contains creation verbs such as ``write'', ``generate'', or ``create'', the message is forwarded to the LLM for code generation. Otherwise, a keyword extraction is performed and a script search may be initiated.
+  \item \texttt{extract\_search\_keywords(self, message)}: uses the \texttt{LLMService} to extract one or more normalized keywords suitable for filesystem/script searches. The extractor uses examples and a constrained prompt to avoid ambiguous outputs (e.g., returning the actual IPTS number rather than the token \texttt{ipts}).
+  \item \texttt{display\_search\_results(self, results, max\_show=15)}: accepts a list of result dicts and renders up to \texttt{max\_show} numbered entries in the chat. When ``find all'' is requested, the method returns the full list (index + full path) and updates \texttt{last\_script\_search\_results} so that \texttt{load script N} commands can reference any item returned.
+  \item \texttt{load\_script\_by\_index(self, index)}: given a 1-based index referencing \texttt{last\_script\_search\_results}, reads the corresponding file from disk and emits \texttt{copy\_to\_editor\_signal} with the file contents so the \texttt{EditorWidget} receives it. Errors (index out of range, file read failure) are reported back into the chat as user-visible messages.
+\end{itemize}
+
+Developer note: the \texttt{ChatWidget} uses a short heuristic to determine whether a user intent is to ``create'' new content (send to the LLM) or to ``find'' existing scripts (run a file-system search). This reduces accidental past-script loading when the user explicitly asks for a generated example.
+
+\subsubsection{Knowledge manager}
+\label{subsub:km}
+
+\textbf{Function:} \texttt{search\_past\_scripts(query, base\_dir="/home/controls/var/tmp", max\_results=15)}
+
+Signature and return:
+\begin{verbatim}
+search_past_scripts(
+    query: str,
+    base_dir: str = "/home/controls/var/tmp",
+    max_results: int = 15
+) -> List[Dict]
+\end{verbatim}
+
+Each returned dictionary contains the following keys:
+\begin{itemize}
+  \item \texttt{filepath} (str): absolute path to the matching file
+  \item \texttt{filename} (str): base filename
+  \item \texttt{folder} (str): containing folder name (useful for IPTS/user folder matches)
+  \item \texttt{match\_types} (List[str]): types of matches found such as \texttt{['filename','folder','content']}
+  \item \texttt{matches} (List[str]): snippets or matched strings found in the file or folder path
+  \item \texttt{mtime} (float): file modification time (seconds since epoch) used for recency sorting
+\end{itemize}
+
+Key behavior and implementation notes:
+\begin{itemize}
+  \item The function performs a depth-limited directory traversal (depth limit = 5) to avoid scanning unrelated system paths.
+  \item Subfolder and IPTS-pattern matching are explicitly supported: queries like \texttt{34382\_yifan} or \texttt{34382} match folder names even when not present in the filename.
+  \item Matches are collected across the full traversal, annotated with \texttt{mtime}, sorted by recency (newest first), and truncated to \texttt{max\_results}.
+  \item This ordering ensures that the most recent relevant scripts are presented to the user rather than an arbitrary early subset.
+\end{itemize}
+
+\subsubsection{LLM Service (keyword extraction and generation)}
+\label{subsub:llm}
+
+\textbf{Function:} \texttt{generate\_response\_stream(prompt, context, chunk\_callback, conversation\_history=None, icl=True)}
+
+Purpose:
+\begin{itemize}
+  \item Streams model outputs back to the caller via \texttt{chunk\_callback} as they are produced.
+  \item For keyword extraction, the LLM is invoked with a constrained prompt that emphasizes returning plain tokens (e.g., numeric IPTS identifiers) rather than narrative text.
+\end{itemize}
+
+Return value and side effects:
+\begin{itemize}
+  \item The function may return either a final response string or a tuple \texttt{(response\_str, usage\_dict)}, where \texttt{usage\_dict} contains token counts and estimated cost.
+  \item Usage information is emitted to the GUI to support cost-aware model selection by the user.
+\end{itemize}
+
+Implementation notes:
+\begin{itemize}
+  \item The API supports both ICL-style calls (large curated context payloads) and RAG-style retrieval augmentation; the front-end determines emphasis, but the back-end can perform both simultaneously.
+  \item Keyword extraction uses a narrowly scoped prompt with examples and fallback heuristics to ensure stable, unambiguous outputs across diverse user inputs.
+\end{itemize}
+\subsubsection{Editor and script executor}
+\label{subsub:editor}
+
+\textbf{EditorWidget} (in \texttt{gui/editor\_widget.py}): provides typical editor operations such as \texttt{get\_text()}, \texttt{set\_text(text)}, file open/save functionality, and syntax highlighting.
+
+\textbf{ScriptExecutor}: exposes two functions used by the GUI:
+\begin{itemize}
+  \item \texttt{run\_script(script\_text: str)}: executes a script in a sandboxed environment (or hands it to the experimental runner configured for the instrument). Execution details and safety checks are implementation-specific.
+  \item \texttt{estimate\_time(script\_text: str, pc\_per\_hour: float) -> str}: returns a human-readable estimate of experiment time derived from the proton charge budget (\texttt{pc\_per\_hour}) and script commands. The GUI's \texttt{estimate\_time} handler converts invalid numeric input into a clear error message.
+\end{itemize}
+
+\vspace{6pt}
+These developer-facing descriptions should help new contributors understand the core integration points and where to extend or modify functionality.
+\section{DISCUSSION}
+\label{sec:discussion}
+
+\begin{table}[ht] 
+\centering \caption{Feature Comparison: ESAC Original vs ESAC v1} \label{tab:comparison} 
+\begin{tabular}{l l l} 
+\toprule Feature & Original ESAC & ESAC v1 \\ 
+\midrule AI Mode & Basic prompting & ICL + RAG modes \\ 
+User Interface & Simple chat & Integrated IDE \\ 
+Script Editor & None & Multi-tab with syntax highlighting \\ 
+Model Support & Single model & 3 models via OpenRouter \\ 
+Deployment & Python script & Standalone executable \\ 
+Cost Tracking & None & Real-time token/cost monitoring \\ 
+Knowledge Base & Static & Dynamic with relevance scoring \\ 
+Context Window & Limited & Up to 150K tokens \\ 
+Save/Load & None & Full project persistence \\ 
+Time Estimation & None & Proton charge-based calculation \\ \bottomrule \end{tabular} \end{table}
+
+A comparative summary of major feature differences between the original ESAC system and ESAC v1 is provided in Table~\ref{tab:comparison}. The new version delivers substantial improvements across AI capability, user interface design, deployment accessibility, and knowledge management. These enhancements are the result of addressing several key technical challenges encountered during development.
+
+One of the most significant challenges was the implementation of the combined In-Context Learning (ICL) and Retrieval-Augmented Generation (RAG) architecture. ICL required careful optimization of the model’s context window to accommodate large, curated knowledge payloads without exceeding token limits, while RAG required an efficient retrieval mechanism capable of returning highly relevant information with minimal latency. The final solution uses a hybrid approach supported by intelligent caching, context ranking, and selective augmentation, enabling ESAC v1 to generate more accurate, grounded, and consistent outputs.
+
+User experience also improved dramatically over the original version. The introduction of a multi-tab script editor, syntax highlighting, integrated search, and real-time cost tracking transformed ESAC from a simple chatbot into a full-featured development environment. These features allow researchers to manage multiple reduction or scan scripts simultaneously, perform side-by-side comparisons, and maintain persistent project context across sessions.
+
+Deployment presented another major improvement area. The adoption of PyInstaller for packaging ESAC v1 as a standalone executable eliminated the need for Python environments or dependency management, significantly simplifying installation for instrument scientists and visiting users. Secure storage of API keys and automated update handling further strengthened the reliability and portability of the system.
+
+Collectively, these enhancements have made ESAC v1 a far more capable and accessible tool for neutron scattering research. Early adopters report substantial reductions in script preparation time, fewer errors due to improved grounding of generated code, and a more intuitive workflow overall. The integration of advanced AI reasoning with a modernized interface and robust deployment strategy positions ESAC v1 as a foundational tool for future automation across SNS instruments.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % REFERENCES
@@ -296,12 +496,13 @@ ESAC v1 is available for download from the GitHub repository at \url{https://git
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \appendix
 \acresetall
-
 \section{INSTALLATION INSTRUCTIONS}
 \label{app:installation}
 
 \subsection{From Source}
 \label{subsec:from_source}
+
+The ESAC v1 application can be run directly from source on Linux, macOS, or Windows systems with Python 3.8 or later.
 
 \begin{enumerate}
   \item Clone the repository:
@@ -310,28 +511,58 @@ ESAC v1 is available for download from the GitHub repository at \url{https://git
   cd esac-v1
   \end{lstlisting}
 
+  \item (Optional but recommended) Create and activate a virtual environment:
+  \begin{lstlisting}[language=bash]
+  python -m venv esac_env
+  source esac_env/bin/activate        # Windows: esac_env\Scripts\activate
+  \end{lstlisting}
+
   \item Install dependencies:
   \begin{lstlisting}[language=bash]
   pip install -r requirements.txt
   \end{lstlisting}
 
+  \item Configure the API key:
+
+    Edit \texttt{config/env.txt} and set:
+  \begin{lstlisting}
+  OPENROUTER_API_KEY=your_api_key_here
+  \end{lstlisting}
+
+    The key will be encrypted and stored securely on first launch.
+
   \item Run the application:
   \begin{lstlisting}[language=bash]
   python main.py
+  \end{lstlisting}
+
+  \item (Optional) Launch with a custom font size:
+  \begin{lstlisting}[language=bash]
+  python main.py --font small     # or normal, large
   \end{lstlisting}
 \end{enumerate}
 
 \subsection{Using Executable}
 \label{subsec:using_executable}
 
+Pre-built standalone executables may be provided for Linux, Windows, or macOS. These require no Python installation or external dependencies.
+
 \begin{enumerate}
-  \item Download the appropriate executable from the GitHub releases
+  \item Download the appropriate executable from the GitHub Releases page.
+
   \item Make the file executable (Linux/macOS):
   \begin{lstlisting}[language=bash]
-  chmod +x esac_v1_executable
+  chmod +x main
   \end{lstlisting}
-  \item Run the executable directly
+
+  \item Run the executable directly:
+  \begin{lstlisting}[language=bash]
+  ./main
+  \end{lstlisting}
+
+  \item On first run, the settings dialog will prompt for an API key.
 \end{enumerate}
+
 
 \section{CONFIGURATION}
 \label{app:configuration}
