@@ -9,7 +9,7 @@ many configurations.
 These templates follow strict EQ-SANS ordering rules:
 1. For each configuration: transmission → scattering
 2. Never return to a previous configuration
-3. Empty beam only in transmission mode
+3. Empty beam usualy does not require scattering measurement
 4. Use sample position = -1 for non-standard environments
 
 All templates are written in clean markdown/text format for direct RAG ingestion.
@@ -185,90 +185,5 @@ for conf, label in configs:
         closeShutter()
 ```
 
----
-
-5. High-Temperature Multi-Configuration Template (Using Polysci)
-----------------------------------------------------------------
-
-```
-from epics import caget
-from scan import *
-import os
-import sys
-sys.path.append('/home/controls/var/tmp/scripting/dev/')
-from eqsans_scanfunctions_live import *
-
-setipts(99999)
-
-set_polysci_temp(60)
-
-temps = [80, 100]
-
-configs = [
-    ('conf_4000mm_2p5A_60Hz', '4m 2.5a'),
-    ('conf_4000mm_10p0A_60Hz', '4m 10a')
-]
-
-# Transmission once
-loadconf('conf_4000mm_2p5A_60Hz_trans')
-openShutter()
-runsampleid('T-emptybeam 4m 2.5a', 0, 'peltier', 'pc', 1, 0.15)
-runsampleid('T-sample 4m 2.5a', 0, 'peltier', 'pc', 2, 0.15)
-closeShutter()
-
-for conf, label in configs:
-    loadconf(conf + '_scatt')
-    for T in temps:
-        setpeltier1temp(T)
-        setpeltier2temp(T)
-        delay(600)
-        openShutter()
-        runsampleid(f'S-sample {T}C {label}', 0, 'peltier', 'pc', 2, 2.0)
-        closeShutter()
-```
-
----
-
-6. Multi-User / Mixed ITEMS + Multi-Config Template
----------------------------------------------------
-
-```
-from epics import caget
-from scan import *
-import os
-import sys
-sys.path.append('/home/controls/var/tmp/scripting/dev/')
-from eqsans_scanfunctions_live import *
-
-setipts(99999)
-
-samples = [
-    (2, 'A', 11111),
-    (3, 'B', 22222),
-    (4, 'C', 33333)
-]
-
-configs = [
-    ('conf_4000mm_2p5A_60Hz', '4m 2.5a'),
-    ('conf_8000mm_8p0A_60Hz', '8m 8A')
-]
-
-for conf, label in configs:
-
-    loadconf(conf + '_trans')
-    openShutter()
-    runsampleid(f'T-emptybeam {label}', 0, 'peltier', 'pc', 1, 0.15)
-    for pos, name, items in samples:
-        runsampleid(f'T-{name} {label}', items, 'peltier', 'pc', pos, 0.15)
-    closeShutter()
-
-    loadconf(conf + '_scatt')
-    openShutter()
-    for pos, name, items in samples:
-        runsampleid(f'S-{name} {label}', items, 'peltier', 'pc', pos, 1.0)
-    closeShutter()
-```
-
----
 
 End of Module 4

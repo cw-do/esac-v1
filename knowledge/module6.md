@@ -32,23 +32,13 @@ This module defines *how the LLM decides* what needs to be done.
 ### Rule 1 — Always measure transmission before scattering  
 Transmission must happen before any scattering measurement for a configuration.
 
-### Rule 2 — Never return to a previous configuration  
-Once moving to a new instrument configuration, do not go back.
+### Rule 2 — Minimize configuration changes  
+Saves time
 
-### Rule 3 — Transmission is not repeated unless required  
-Transmission is repeated only if:
-- The user requests it
-- Temperature-dependent transmission is required
-- The sample changes physically with temperature
-- A non-standard environment creates unknown attenuation
-
-### Rule 4 — High-temperature procedures require Polysci logic  
-If temperature ≥ 80°C → Polysci must be set to 60°C.
-
-### Rule 5 — Non-standard environments always use position = −1  
+### Rule 3 — Non-standard environments always use position = −1  
 Examples: magnet, furnace, cryostat, humidity cell.
 
-### Rule 6 — Always cool down the Peltier after finishing  
+### Rule 4 — Always cool down the Peltier after finishing  
 End every temperature-controlled experiment with:
 ```
 setpeltier1temp(20)
@@ -75,7 +65,7 @@ The LLM must derive:
   - 9m 15A → `conf_9000mm_15p0A_60Hz`
 
 ### 3.2 Required measurement types  
-- Transmission is always needed for the first configuration.
+- Transmission is always needed for all configurations but once for initial temperature.
 - Scattering is required for all configurations.
 
 ### 3.3 Sample positions  
@@ -224,12 +214,7 @@ skip peltier and polysci commands
 -------------------------
 
 LLM must avoid generating scripts with:
-- shutter open without closing
-- missing loadconf() before runsampleid()
-- temperature control for non-peltier environments
-- returning to previous configuration
-- missing empty beam in transmission
-- missing delay after temperature change
+- missing openShutter() before runsampleid()
 - pc values inconsistent with wavelength
 
 ---
@@ -239,9 +224,7 @@ LLM must avoid generating scripts with:
 
 Item | Rule
 -----|-----
-Transmission | Required once unless requested otherwise
 Empty beam | Required for transmission only
-Configuration order | Never return to previous config
 Temperature | Use delay(600) after each change
 High temperature | Polysci=60C if ≥80C
 Non-standard env | position = −1

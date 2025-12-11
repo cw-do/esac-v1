@@ -120,7 +120,7 @@ set_polysci_temp(20)
 
 ### 5.1 Transmission is typically **not** repeated
 If samples are temperature stable (e.g., solid or sealed liquid cells):
-- Transmission measurements are performed **once**, at the initial configuration.
+- Transmission measurements are performed **once**, at the initial temperature for all configurations.
 
 ### 5.2 Exceptions requiring new transmission
 A new transmission measurement is needed when:
@@ -129,11 +129,6 @@ A new transmission measurement is needed when:
 - non‑standard environments are used with unknown beam attenuation
 - scattering intensity is expected to vary significantly with temperature
 
-### 5.3 Default guideline for LLM
-```
-Default: Transmission only once.
-Repeat transmission only if the user specifically requests or instability is likely.
-```
 
 ---
 
@@ -142,9 +137,9 @@ Repeat transmission only if the user specifically requests or instability is lik
 
 When performing multiple configurations at high temperature:
 
-1. **Transmission** is performed only once (first configuration).
-2. **Scattering** is performed at each configuration and each temperature.
-3. **Polysci must be set BEFORE increasing Peltier temperatures above 80°C.**
+1. **Transmission** is performed only once (first temperature).
+2. **Scattering** is performed at each temperature.
+3. **Polysci must be set to 60C BEFORE increasing Peltier temperatures above 80°C.**
 4. Cooling back down must occur at the end.
 
 ### Example high‑temperature sequence
@@ -191,21 +186,5 @@ setpeltier2temp(20)
 set_polysci_temp(20)
 ```
 
----
-
-9. Summary Table
------------------
-
-Item | Rule
------|-----
-Peltier range | −10°C to 125°C
-Polysci max | 60°C
-High‑temp threshold | ≥80°C requires Polysci=60°C
-Stabilization | delay(600) after temperature change
-Transmission repetition | Only if needed or requested
-Non‑standard env | position = −1, do not use Peltier commands
-End‑of‑experiment | return temperature to 20°C
-
----
 
 End of Module 5

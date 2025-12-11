@@ -1,7 +1,6 @@
 import sys
 import os
 import warnings
-import argparse
 import tiktoken
 
 # Suppress SIP deprecation warning
@@ -21,10 +20,9 @@ from services.script_executor import ScriptExecutor
 from services.config_manager import ConfigManager
 
 class MainWindow(QMainWindow):
-    def __init__(self, icl=False):
+    def __init__(self):
         super().__init__()
-        self.icl = icl
-        mode_name = "ICL Mode" if icl else "RAG Mode"
+        mode_name = "Hybrid Mode"
         self.setWindowTitle(f"ESAC v1 - EQ-SANS Assisting Chatbot ({mode_name})")
         self.setGeometry(100, 100, 1200, 800)
 
@@ -39,18 +37,27 @@ class MainWindow(QMainWindow):
         extra_dirs = None # No extra dirs on initial load if needed
         self.knowledge_manager.load_or_build_index(extra_dirs)
 
-        # Print ICL context files if in ICL mode
-        if self.icl:
-            print("ICL Mode: Files included in context:")
-            for filename in sorted(self.knowledge_manager.local_knowledge.keys()):
-                print(f"  - {filename}")
-            
-            # Calculate total tokens
-            context = self.knowledge_manager.get_full_context()
-            encoding = tiktoken.encoding_for_model("gpt-4")  # Use GPT-4 encoding as reference
-            tokens = len(encoding.encode(context))
-            print(f"Total tokens in ICL context: {tokens}")
-            print(f"Within typical context limit (128k): {tokens < 128000}")
+        # Check for QRangeConfigurations and add to knowledge as RAG-only
+        qrange_dir = os.environ.get("QRangeConfigurations_DIR", "/home/controls/var/QRangeConfigurations")
+        if os.path.exists(qrange_dir) and os.path.isdir(qrange_dir):
+            sav_files = sorted([f for f in os.listdir(qrange_dir) if f.lower().endswith('.sav')])
+            if sav_files:
+                config_names = [os.path.splitext(f)[0] for f in sav_files]
+                content = "# Available QRange Configurations\n\nUse these when selecting or discussing instrument setups:\n\n" + "\n".join(f"- {name}" for name in config_names)
+                self.knowledge_manager.local_knowledge["QRangeConfigurations.md"] = content
+                self.knowledge_manager.rag_only.add("QRangeConfigurations.md")
+
+        # Print knowledge files included in context
+        print("Hybrid Mode: Files included in context:")
+        for filename in sorted(self.knowledge_manager.local_knowledge.keys()):
+            print(f"  - {filename}")
+        
+        # Calculate total tokens for ICL part
+        context = self.knowledge_manager.get_full_context(max_length=200000)
+        encoding = tiktoken.encoding_for_model("gpt-4")  # Use GPT-4 encoding as reference
+        tokens = len(encoding.encode(context))
+        print(f"Total tokens in ICL context: {tokens}")
+        print(f"Within typical context limit (128k): {tokens < 128000}")
 
         # Create central widget
         central_widget = QWidget()
@@ -67,7 +74,7 @@ class MainWindow(QMainWindow):
         top_splitter.addWidget(self.editor)
 
         # Chat widget
-        self.chat = ChatWidget(self.llm_service, self.knowledge_manager, self.config_manager, self.editor, self.icl)
+        self.chat = ChatWidget(self.llm_service, self.knowledge_manager, self.config_manager, self.editor)
         self.chat.copy_to_editor_signal.connect(self.copy_to_editor)
         top_splitter.addWidget(self.chat)
 
@@ -198,18 +205,7 @@ class MainWindow(QMainWindow):
             self.time_label.setText("Est. time: No script")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="ESAC v1 - EQ-SANS Assisting Chatbot")
-    parser.add_argument('--icl', action='store_true', help='Use In-Context Learning mode (default)')
-    parser.add_argument('--rag', action='store_true', help='Use Retrieval-Augmented Generation mode')
-    args = parser.parse_args()
-
-    # Determine mode: ICL is default, RAG if --rag is specified
-    if args.rag:
-        icl_mode = False
-    else:
-        icl_mode = True  # Default to ICL
-
     app = QApplication(sys.argv)
-    window = MainWindow(icl=icl_mode)
+    window = MainWindow()
     window.show()
     sys.exit(app.exec_())

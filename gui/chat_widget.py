@@ -43,13 +43,13 @@ class ChatWorker(QThread):
 class ChatWidget(QTabWidget):
     copy_to_editor_signal = pyqtSignal(object)
 
-    def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None, icl=False):
+    def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None):
         super().__init__()
         self.llm_service = llm_service
         self.knowledge_manager = knowledge_manager
         self.config_manager = config_manager
         self.editor_widget = editor_widget
-        self.icl = icl
+        self.icl = True  # Always hybrid
         self.last_speaker = None  # Track who spoke last for adding blank lines
         
         # Token tracking
@@ -283,11 +283,11 @@ class ChatWidget(QTabWidget):
             source_keywords = ['source', 'sources', 'knowledge', 'files', 'documents', 'documents']
             is_source_query = any(keyword in message.lower() for keyword in source_keywords)
             
-            # Get context from knowledge
-            if self.icl:
-                context = self.knowledge_manager.get_full_context(max_length=150000)
-            else:
-                context = self.knowledge_manager.get_relevant_context(enhanced_message)
+            # Get context from knowledge (hybrid ICL + RAG)
+            context = self.knowledge_manager.get_full_context(max_length=150000)
+            relevant_context = self.knowledge_manager.get_relevant_context(enhanced_message)
+            if relevant_context and relevant_context != "No knowledge base loaded.":
+                context += "\n\n" + relevant_context
             
             # If asking about sources, add information about all knowledge files
             if is_source_query and hasattr(self.knowledge_manager, 'local_knowledge'):

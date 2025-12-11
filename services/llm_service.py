@@ -51,10 +51,18 @@ When answering questions about functions:
 5. For any question about a function, quote directly from its definition and docstring in the knowledge base
 6. When listing available functions, scan through the Python code and extract function names with their purposes
 
+When answering questions about instrument configurations:
+1. Look for the 'Currently_Existing_Configurations' section in the provided context
+2. List the configurations exactly as they appear in that section and be complete about it.
+
 When generating scripts:
 - Use only the functions that are explicitly defined in the eqsans_scanfunctions_live.py file
 - Do not create new functions or modify existing function signatures
 - Follow the exact calling conventions shown in the code examples"""
+            
+
+
+
         else:
             system_prompt = f"""You are the EQ-SANS experiment assistant. Use ONLY the retrieved RAG documents below to generate scripts and answer questions. Follow all rules from the modules.
 
@@ -87,7 +95,8 @@ When answering questions:
 2. Use the exact parameter names, types, and behaviors described in the knowledge base
 3. Do not add, modify, or infer additional functionality not present in the knowledge base
 4. Reference the scan functions and instrument controls exactly as they appear in eqsans_scanfunctions_live.txt
-5. For any question about a function, quote directly from its definition in the knowledge base"""
+5. For any question about a function, quote directly from its definition in the knowledge base
+6. When discussing instrument configurations, refer to the 'Currently_Existing_Configurations' section in the provided context."""
 
         # Build messages list
         messages = [{"role": "system", "content": system_prompt}]

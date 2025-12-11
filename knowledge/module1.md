@@ -32,15 +32,15 @@ Examples of configuration strings:
 - conf_4000mm_10p0A_60Hz_scatt : 4m 10A 60Hz, scattering measurement
 - conf_9000mm_15p0A_60Hz_scatt : 9m 15A 60Hz, scattering measurement
 - conf_4000mm_2p5A_30Hz_scatt : 4m 2.5A 30Hz (so called frame-skipping mode), scattering measurement
-- conf_xxxxmm_yyyA_zzHz_scatt : xxxx mm sample to detector distance, 
-    yyy A neutron wavelength, here yyy can be any 2digit floating number 2p5 = 2.5 or 4p5=4.5 or 10p0 = 10.0
-    zz Hz : chopper frequency zz is 30 or 60
+- conf_xxxxmm_xxpyA_zzHz_scatt : xxxx mm sample to detector distance, 
+    xxpy A neutron wavelength, here xxpy can be any floating number 2p5 = 2.5 or 4p5=4.5 or 10p0 = 10.0
+    zz Hz : chopper frequency zz is 30 or 60. 60 is typical
     the last 'scatt' is for scattering. 'trans' will be for transmission.
     
 command loadconf is used to load this configuration settings.
 
+NOTE: WHEN ASKED ABOUT CONFIGURATIONS OR EXISTING CONFIGURATIONS, USE THE LIST OF CONFIGURATIONS DEFINED UNDER <Currently Existing Configurations> in the knowledge
 
-These strings determine instrument geometry, wavelength band, and measurement mode.
 
 3. Types of Measurements
 ------------------------

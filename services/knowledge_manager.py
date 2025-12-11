@@ -8,7 +8,7 @@ import sys
 class KnowledgeManager:
     def __init__(self):
         self.local_knowledge = {}
-        # Removed: model, index, documents, FAISS files
+        self.rag_only = set()  # Files that are only for RAG, not included in full ICL context
 
     def load_or_build_index(self, extra_dirs=None):
         """Load knowledge base text files for both ICL and RAG modes"""
@@ -76,7 +76,7 @@ class KnowledgeManager:
         """Get all local knowledge as context for ICL mode"""
         # Prioritize eqsans_scanfunctions_live.py as it's most important for function definitions
         priority_files = ['eqsans_scanfunctions_live.py']
-        other_files = [f for f in self.local_knowledge.keys() if f not in priority_files]
+        other_files = [f for f in self.local_knowledge.keys() if f not in priority_files and f not in self.rag_only]
         
         # Build context with priority files first
         context_parts = []
@@ -88,8 +88,10 @@ class KnowledgeManager:
         full_context = "\n".join(context_parts)
         
         # If we're going to truncate, at least include the priority file completely
+        
+        # If we're going to truncate, at least include the priority file completely
         if len(full_context) > max_length:
-            # Try to fit the priority file completely
+            # Try to fit the priority files completely
             priority_content = ""
             if priority_files and priority_files[0] in self.local_knowledge:
                 priority_content = f"=== {priority_files[0]} ===\n{self.local_knowledge[priority_files[0]]}\n"
@@ -111,7 +113,7 @@ class KnowledgeManager:
                             break
                 full_context = priority_content + other_content
             else:
-                # If priority file alone exceeds limit, truncate it
+            # If priority files alone exceed limit, truncate them
                 full_context = priority_content[:max_length]
         
         return full_context
