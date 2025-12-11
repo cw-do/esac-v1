@@ -251,6 +251,34 @@ class EditorWidget(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to open file: {str(e)}")
 
+    def load_file(self, filepath):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            basename = os.path.basename(filepath)
+            
+            current_index = self.tab_widget.currentIndex()
+            current_editor = self.tab_widget.widget(current_index)
+            if (current_index >= 0 and 
+                isinstance(current_editor, CodeEditor) and
+                current_editor.file_path is None and 
+                self.get_text().strip() == ""):
+                # Replace empty untitled tab
+                self.set_text(content)
+                self.tab_widget.setTabText(current_index, basename)
+                current_editor.file_path = filepath
+            else:
+                # Create new tab
+                self.new_tab(basename, content)
+                new_index = self.tab_widget.currentIndex()
+                new_editor = self.tab_widget.widget(new_index)
+                if isinstance(new_editor, CodeEditor):
+                    new_editor.file_path = filepath
+                    
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load file: {str(e)}")
+
     def save_file(self):
         current_index = self.tab_widget.currentIndex()
         if current_index < 0:

@@ -158,13 +158,27 @@ class MainWindow(QMainWindow):
         self.knowledge_manager.load_or_build_index(extra_dirs)
         print("Knowledge base rebuilt successfully")
 
-    def copy_to_editor(self, text):
-        current_text = self.editor.get_text()
-        if current_text:
-            # Append to existing text
-            self.editor.set_text(current_text + "\n\n" + text)
+    def copy_to_editor(self, data):
+        if isinstance(data, tuple):
+            type_, content = data
+            if type_ == 'text':
+                current_text = self.editor.get_text()
+                if current_text:
+                    # Append to existing text
+                    self.editor.set_text(current_text + "\n\n" + content)
+                else:
+                    self.editor.set_text(content)
+            elif type_ == 'file':
+                if self.editor.get_text():
+                    self.editor.new_tab()
+                self.editor.load_file(content)
         else:
-            self.editor.set_text(text)
+            # Backward compatibility
+            current_text = self.editor.get_text()
+            if current_text:
+                self.editor.set_text(current_text + "\n\n" + data)
+            else:
+                self.editor.set_text(data)
 
     def show_settings(self):
         dialog = SettingsDialog(self.config_manager, self.llm_service)

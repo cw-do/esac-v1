@@ -1,6 +1,7 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLineEdit, QPushButton, QHBoxLayout, QListWidgetItem, QComboBox, QTextEdit, QLabel
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLineEdit, QPushButton, QHBoxLayout, QListWidgetItem, QComboBox, QTextEdit, QLabel, QTabWidget
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 import re
+import os
 from services.llm_service import LLMService
 from services.knowledge_manager import KnowledgeManager
 
@@ -39,8 +40,8 @@ class ChatWorker(QThread):
                 self.usage_info.emit(self.usage)
             self.finished.emit()
 
-class ChatWidget(QWidget):
-    copy_to_editor_signal = pyqtSignal(str)
+class ChatWidget(QTabWidget):
+    copy_to_editor_signal = pyqtSignal(object)
 
     def __init__(self, llm_service, knowledge_manager, config_manager, editor_widget=None, icl=False):
         super().__init__()
@@ -66,7 +67,9 @@ class ChatWidget(QWidget):
             'meta-llama/llama-3.1-70b-instruct': {'input': 0.50, 'output': 1.00},
         }
 
-        layout = QVBoxLayout()
+        # Create chat tab
+        self.chat_tab = QWidget()
+        chat_layout = QVBoxLayout()
 
         # Chat history
         self.chat_list = QListWidget()
@@ -76,7 +79,7 @@ class ChatWidget(QWidget):
         self.chat_list.setTextElideMode(Qt.ElideNone)  # Don't elide text
         # Enable rich text display
         self.chat_list.setStyleSheet("QListWidget::item { padding: 2px; }")
-        layout.addWidget(self.chat_list)
+        chat_layout.addWidget(self.chat_list)
 
         # Input layout (vertical)
         input_layout = QVBoxLayout()
@@ -103,7 +106,7 @@ class ChatWidget(QWidget):
 
         input_layout.addLayout(button_layout)
 
-        layout.addLayout(input_layout)
+        chat_layout.addLayout(input_layout)
 
         # Model selection and token display
         model_layout = QHBoxLayout()
@@ -122,9 +125,28 @@ class ChatWidget(QWidget):
         self.reset_tokens_button.clicked.connect(self.reset_token_counter)
         model_layout.addWidget(self.reset_tokens_button)
         
-        layout.addLayout(model_layout)
+        chat_layout.addLayout(model_layout)
 
-        self.setLayout(layout)
+        self.chat_tab.setLayout(chat_layout)
+        self.addTab(self.chat_tab, "Chat")
+
+        # Create file search tab
+        self.file_search_tab = QWidget()
+        search_layout = QVBoxLayout()
+
+        # Search input
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Enter search keywords separated by comma...")
+        self.search_input.returnPressed.connect(self.perform_file_search)
+        search_layout.addWidget(self.search_input)
+
+        # Results list
+        self.search_results = QListWidget()
+        self.search_results.itemDoubleClicked.connect(self.load_file_to_editor)
+        search_layout.addWidget(self.search_results)
+
+        self.file_search_tab.setLayout(search_layout)
+        self.addTab(self.file_search_tab, "File Search")
 
         self.conversation_history = []
 
@@ -192,10 +214,10 @@ class ChatWidget(QWidget):
                         break
         
         if last_code_block:
-            self.copy_to_editor_signal.emit(last_code_block)
+            self.copy_to_editor_signal.emit(('text', last_code_block))
         else:
             # If no code blocks found in any AI response, show a message
-            self.copy_to_editor_signal.emit("# No Python code found in chat history")
+            self.copy_to_editor_signal.emit(('text', "# No Python code found in chat history"))
 
     def change_model(self, model):
         self.llm_service.model = model
@@ -353,3 +375,60 @@ class ChatWidget(QWidget):
         
         # Reset token counter
         self.reset_token_counter()
+
+    def perform_file_search(self):
+        """Perform file search based on keywords"""
+        keywords = self.search_input.text().strip()
+        if not keywords:
+            return
+        
+        keyword_list = [k.strip() for k in keywords.split(',') if k.strip()]
+        if not keyword_list:
+            return
+        
+        self.search_results.clear()
+        
+        base_path = "/home/controls/var/tmp"
+        max_depth = 4
+        
+        results = []
+        index = 1
+        
+        for root, dirs, files in os.walk(base_path):
+            # Calculate depth
+            depth = root[len(base_path):].count(os.sep)
+            if depth > max_depth:
+                dirs[:] = []  # Don't go deeper
+                continue
+            
+            for file in files:
+                filepath = os.path.join(root, file)
+                match = False
+                
+                # Check filename
+                filename_lower = file.lower()
+                if any(kw.lower() in filename_lower for kw in keyword_list):
+                    match = True
+                
+                # Check file content if text file
+                if not match:
+                    try:
+                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                            content = f.read().lower()
+                            if any(kw.lower() in content for kw in keyword_list):
+                                match = True
+                    except:
+                        pass  # Skip binary files
+                
+                if match:
+                    results.append(f"{index}. {filepath}")
+                    index += 1
+        
+        for result in results:
+            item = QListWidgetItem(result)
+            self.search_results.addItem(item)
+
+    def load_file_to_editor(self, item):
+        """Load selected file to editor"""
+        filepath = item.text().split('. ', 1)[1]  # Remove index
+        self.copy_to_editor_signal.emit(('file', filepath))
