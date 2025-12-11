@@ -350,66 +350,79 @@ class ChatWidget(QTabWidget):
                 context = source_info + "\n\n" + context
 
             # Check if message is asking for Q-range calculation
-            qrange_pattern = r'q\s*range.*[^\d]*(\d+(?:\.\d+)?)\s*m\s*(\d+(?:\.\d+)?)\s*a'
+            qrange_pattern = r'q\s*range.*(\d+(?:\.\d+)?)\s*m\s*(\d+(?:\.\d+)?)\s*a'
             qrange_match = re.search(qrange_pattern, message.lower())
             if qrange_match:
-                distance_m = float(qrange_match.group(1))
-                wavelength_a = float(qrange_match.group(2))
-                distance_mm = int(distance_m * 1000)  # Convert to mm
-                
-                # Try to find matching config
+                # Get available configs
                 available_configs = []
                 if "Currently_Existing_Configurations" in self.knowledge_manager.local_knowledge:
                     content = self.knowledge_manager.local_knowledge["Currently_Existing_Configurations"]
-                    # Extract config names from the content
                     config_list_match = re.search(r'```\n(.*?)\n```', content, re.DOTALL)
                     if config_list_match:
                         available_configs = [line.strip() for line in config_list_match.group(1).split('\n') if line.strip()]
                 
-                # Find matching config based on distance and wavelength, default to 60Hz
-                matched_config = None
-                for config in available_configs:
-                    config_lower = config.lower()
-                    if (str(distance_mm) in config_lower and 
-                        str(wavelength_a).replace('.', 'p') in config_lower and
-                        '60hz' in config_lower):  # Prefer 60Hz configs
-                        matched_config = config
-                        break
-                
-                # If no 60Hz found, try any matching config
-                if not matched_config:
-                    for config in available_configs:
-                        config_lower = config.lower()
-                        if str(distance_mm) in config_lower and str(wavelength_a).replace('.', 'p') in config_lower:
-                            matched_config = config
-                            break
-                
-                if matched_config:
-                    qrange_results = self.knowledge_manager.calculate_qrange(matched_config)
-                    if qrange_results:
-                        response = f"Q-range calculation for configuration '{matched_config}':\n\n"
-                        for key, value in qrange_results.items():
-                            if isinstance(value, float):
-                                response += f"{key}: {value:.4f}\n"
-                            else:
-                                response += f"{key}: {value}\n"
-                        self.add_message("AI", response)
-                        self.conversation_history.append({"role": "assistant", "content": response})
-                        self.input_field.clear()
-                        return
-                    else:
-                        config_data = self.knowledge_manager.get_qrange_config_data(matched_config)
-                        if config_data:
-                            data_str = "\n".join([f"{k}: {v}" for k, v in config_data.items()])
-                            response = f"Could not calculate Q-range for configuration '{matched_config}'. Loaded config data:\n\n{data_str}"
+                if available_configs:
+                    # Use LLM to find the best matching configuration
+                    config_prompt = f"""Given the user query: "{message}"
+
+Available instrument configurations:
+{chr(10).join(f"- {config}" for config in available_configs)}
+
+Please identify the SINGLE best matching configuration name from the list above that corresponds to the user's Q-range request. Consider distance (m), wavelength (Å), and any other specifications mentioned.
+
+Return ONLY the configuration name, nothing else. If no good match, return "NONE"."""
+                    
+                    try:
+                        # Get LLM response for config selection
+                        config_response = self.llm_service.generate_response_stream(
+                            config_prompt, 
+                            "You are a configuration matching assistant. Return only the exact configuration name.", 
+                            None, None, False
+                        )
+                        if isinstance(config_response, tuple):
+                            matched_config = config_response[0].strip()
                         else:
-                            response = f"Could not load config data for '{matched_config}'.\nSearched for files:\n- {matched_config}.sav\n- {matched_config.replace('_scatt', '_trans')}.sav"
+                            matched_config = config_response.strip()
+                        
+                        if matched_config and matched_config != "NONE" and matched_config in available_configs:
+                            # Proceed with calculation
+                            qrange_results = self.knowledge_manager.calculate_qrange(matched_config)
+                            if qrange_results:
+                                response = f"Q-range calculation for configuration '{matched_config}':\n\n"
+                                for key, value in qrange_results.items():
+                                    if isinstance(value, float):
+                                        response += f"{key}: {value:.4f}\n"
+                                    else:
+                                        response += f"{key}: {value}\n"
+                                self.add_message("AI", response)
+                                self.conversation_history.append({"role": "assistant", "content": response})
+                                self.input_field.clear()
+                                return
+                            else:
+                                config_data = self.knowledge_manager.get_qrange_config_data(matched_config)
+                                if config_data:
+                                    data_str = "\n".join([f"{k}: {v}" for k, v in config_data.items()])
+                                    response = f"Could not calculate Q-range for configuration '{matched_config}'. Loaded config data:\n\n{data_str}"
+                                else:
+                                    response = f"Could not load config data for '{matched_config}'.\nSearched for files:\n- {matched_config}.sav\n- {matched_config.replace('_scatt', '_trans')}.sav"
+                                self.add_message("AI", response)
+                                self.conversation_history.append({"role": "assistant", "content": response})
+                                self.input_field.clear()
+                                return
+                        else:
+                            response = f"Could not find a matching configuration for your request. Available configurations: {', '.join(available_configs[:10])}"
+                            self.add_message("AI", response)
+                            self.conversation_history.append({"role": "assistant", "content": response})
+                            self.input_field.clear()
+                            return
+                    except Exception as e:
+                        response = f"Error matching configuration: {str(e)}"
                         self.add_message("AI", response)
                         self.conversation_history.append({"role": "assistant", "content": response})
                         self.input_field.clear()
                         return
                 else:
-                    response = f"Configuration for {distance_m}m {wavelength_a}Å not found. Available configurations: {', '.join(available_configs[:10])}"
+                    response = "No instrument configurations available for Q-range calculation."
                     self.add_message("AI", response)
                     self.conversation_history.append({"role": "assistant", "content": response})
                     self.input_field.clear()
