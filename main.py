@@ -34,8 +34,10 @@ class MainWindow(QMainWindow):
         self.knowledge_manager = KnowledgeManager()
         self.script_executor = ScriptExecutor()
 
-        # Load knowledge base
-        self.knowledge_manager.load_or_build_index()
+        # Load initial knowledge
+        # extra_dirs = ["/home/controls/var/tmp"] if os.path.exists("/home/controls/var/tmp") else None
+        extra_dirs = None # No extra dirs on initial load if needed
+        self.knowledge_manager.load_or_build_index(extra_dirs)
 
         # Print ICL context files if in ICL mode
         if self.icl:
@@ -91,10 +93,7 @@ class MainWindow(QMainWindow):
         self.simulate_button.clicked.connect(self.simulate_script)
         button_layout.addWidget(self.simulate_button)
 
-        # Build Knowledge Base button
-        self.build_kb_button = QPushButton("Build Knowledge Base")
-        self.build_kb_button.clicked.connect(self.build_knowledge_base)
-        button_layout.addWidget(self.build_kb_button)
+        # NOTE: Build Knowledge Base button removed - knowledge is loaded from `knowledge/` only
 
         # Settings button
         self.settings_button = QPushButton("Settings")
@@ -140,9 +139,6 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(main_splitter)
         central_widget.setLayout(main_layout)
 
-        # Load initial knowledge
-        extra_dirs = ["/home/controls/var/tmp"] if os.path.exists("/home/controls/var/tmp") else None
-        self.knowledge_manager.load_or_build_index(extra_dirs)
 
     def run_script(self):
         script_content = self.editor.get_text()
@@ -159,21 +155,8 @@ class MainWindow(QMainWindow):
             except SyntaxError as e:
                 self.time_label.setText(f"Syntax Error: {e}")
 
-    def build_knowledge_base(self):
-        """Rebuild the knowledge base from all available directories"""
-        import os  # Import os at the top
-        extra_dirs = ["/home/controls/var/tmp"] if os.path.exists("/home/controls/var/tmp") else []
-        directories = ["knowledge"] + extra_dirs
-        print(f"Building knowledge base from: {directories}")
-        
-        # Force rebuild by removing existing index files
-        for file in ["knowledge_index.faiss", "knowledge_docs.json", "knowledge_hash.txt"]:
-            if os.path.exists(file):
-                os.remove(file)
-        
-        # Rebuild the index
-        self.knowledge_manager.load_or_build_index(extra_dirs)
-        print("Knowledge base rebuilt successfully")
+    # NOTE: build_knowledge_base function removed - knowledge is loaded on startup and can be
+    # reloaded from the `knowledge/` directory via the application logic (if needed)
 
     def copy_to_editor(self, data):
         if isinstance(data, tuple):
