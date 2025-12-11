@@ -403,7 +403,7 @@ class ChatWidget(QTabWidget):
                             data_str = "\n".join([f"{k}: {v}" for k, v in config_data.items()])
                             response = f"Could not calculate Q-range for configuration '{matched_config}'. Loaded config data:\n\n{data_str}"
                         else:
-                            response = f"Could not load config data for '{matched_config}'."
+                            response = f"Could not load config data for '{matched_config}'.\nSearched for files:\n- {matched_config}.sav\n- {matched_config.replace('_scatt', '_trans')}.sav"
                         self.add_message("AI", response)
                         self.conversation_history.append({"role": "assistant", "content": response})
                         self.input_field.clear()

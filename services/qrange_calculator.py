@@ -24,7 +24,8 @@ class QRangeCalculator:
             params = {}
 
             # Load scattering config
-            config_path = self.config_folder + config_name + "_scatt.sav"
+            config_path = self.config_folder + config_name + ".sav"
+            print(f"Trying to load scattering config from: {config_path}")
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
                     content = f.read()
@@ -50,7 +51,8 @@ class QRangeCalculator:
                                     params[param_name] = value
 
             # Load transmission config if exists (overwrites scattering values where applicable)
-            config_path_trans = self.config_folder + config_name + "_trans.sav"
+            config_path_trans = self.config_folder + config_name.replace('_scatt', '_trans') + ".sav"
+            print(f"Trying to load transmission config from: {config_path_trans}")
             if os.path.exists(config_path_trans):
                 with open(config_path_trans, 'r') as f:
                     content = f.read()
