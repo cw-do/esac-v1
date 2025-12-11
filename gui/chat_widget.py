@@ -366,13 +366,23 @@ class ChatWidget(QTabWidget):
                     if config_list_match:
                         available_configs = [line.strip() for line in config_list_match.group(1).split('\n') if line.strip()]
                 
-                # Find matching config based on distance and wavelength
+                # Find matching config based on distance and wavelength, default to 60Hz
                 matched_config = None
                 for config in available_configs:
                     config_lower = config.lower()
-                    if str(distance_mm) in config_lower and str(wavelength_a).replace('.', 'p') in config_lower:
+                    if (str(distance_mm) in config_lower and 
+                        str(wavelength_a).replace('.', 'p') in config_lower and
+                        '60hz' in config_lower):  # Prefer 60Hz configs
                         matched_config = config
                         break
+                
+                # If no 60Hz found, try any matching config
+                if not matched_config:
+                    for config in available_configs:
+                        config_lower = config.lower()
+                        if str(distance_mm) in config_lower and str(wavelength_a).replace('.', 'p') in config_lower:
+                            matched_config = config
+                            break
                 
                 if matched_config:
                     qrange_results = self.knowledge_manager.calculate_qrange(matched_config)
@@ -388,7 +398,12 @@ class ChatWidget(QTabWidget):
                         self.input_field.clear()
                         return
                     else:
-                        response = f"Could not calculate Q-range for configuration '{matched_config}'. Config data may be invalid."
+                        config_data = self.knowledge_manager.get_qrange_config_data(matched_config)
+                        if config_data:
+                            data_str = "\n".join([f"{k}: {v}" for k, v in config_data.items()])
+                            response = f"Could not calculate Q-range for configuration '{matched_config}'. Loaded config data:\n\n{data_str}"
+                        else:
+                            response = f"Could not load config data for '{matched_config}'."
                         self.add_message("AI", response)
                         self.conversation_history.append({"role": "assistant", "content": response})
                         self.input_field.clear()
