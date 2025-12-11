@@ -2,6 +2,7 @@ import sys
 import os
 import warnings
 import argparse
+import tiktoken
 
 # Suppress SIP deprecation warning
 warnings.filterwarnings("ignore", message=".*sipPyTypeDict.*deprecated.*", category=DeprecationWarning)
@@ -41,6 +42,13 @@ class MainWindow(QMainWindow):
             print("ICL Mode: Files included in context:")
             for filename in sorted(self.knowledge_manager.local_knowledge.keys()):
                 print(f"  - {filename}")
+            
+            # Calculate total tokens
+            context = self.knowledge_manager.get_full_context()
+            encoding = tiktoken.encoding_for_model("gpt-4")  # Use GPT-4 encoding as reference
+            tokens = len(encoding.encode(context))
+            print(f"Total tokens in ICL context: {tokens}")
+            print(f"Within typical context limit (128k): {tokens < 128000}")
 
         # Create central widget
         central_widget = QWidget()
