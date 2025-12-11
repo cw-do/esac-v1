@@ -147,9 +147,13 @@ class EditorWidget(QWidget):
         self.save_button = QPushButton("Save")
         self.save_button.clicked.connect(self.save_file)
         
+        self.save_as_button = QPushButton("Save As")
+        self.save_as_button.clicked.connect(self.save_file_as)
+        
         button_layout.addWidget(self.new_tab_button)
         button_layout.addWidget(self.open_button)
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.save_as_button)
         button_layout.addStretch()
         
         layout.addLayout(button_layout)
