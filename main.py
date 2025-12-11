@@ -21,7 +21,7 @@ from services.script_executor import ScriptExecutor
 from services.config_manager import ConfigManager
 
 class MainWindow(QMainWindow):
-    def __init__(self, base_mono_font_size=None):
+    def __init__(self, base_mono_font_size=None, show_token=True):
         super().__init__()
         mode_name = "Hybrid Mode"
         self.setWindowTitle(f"ESAC v1 - EQ-SANS Assisting Chatbot ({mode_name})")
@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
         top_splitter.addWidget(self.editor)
 
         # Chat widget
-        self.chat = ChatWidget(self.llm_service, self.knowledge_manager, self.config_manager, self.editor)
+        self.chat = ChatWidget(self.llm_service, self.knowledge_manager, self.config_manager, self.editor, show_token=show_token)
         self.chat.copy_to_editor_signal.connect(self.copy_to_editor)
         top_splitter.addWidget(self.chat)
 
