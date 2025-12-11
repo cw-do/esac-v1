@@ -11,6 +11,7 @@ These templates follow strict EQ-SANS ordering rules:
 2. Never return to a previous configuration
 3. Empty beam usualy does not require scattering measurement
 4. Use sample position = -1 for non-standard environments
+5. If user request, use straight forward sequential coding instead of using for-loops.
 
 All templates are written in clean markdown/text format for direct RAG ingestion.
 
@@ -163,14 +164,20 @@ configs = [
     ('conf_4000mm_10p0A_60Hz', '4m 10a')
 ]
 
-# Transmission is done only once (at initial temperature)
+# Transmission is done only at initial temperature
 setpeltier1temp(25)
 setpeltier2temp(25)
-
+# transmission for first config
 loadconf('conf_4000mm_2p5A_60Hz_trans')
 openShutter()
 runsampleid('T-emptybeam 4m 2.5a', 0, 'peltier', 'pc', 1, 0.15)
 runsampleid('T-A 4m 2.5a', 0, 'peltier', 'pc', 2, 0.15)
+closeShutter()
+# transmission for second config
+loadconf('conf_4000mm_10p0A_60Hz_trans')
+openShutter()
+runsampleid('T-emptybeam 4m 10a', 0, 'peltier', 'pc', 1, 0.15)
+runsampleid('T-A 4m 10a', 0, 'peltier', 'pc', 2, 0.15)
 closeShutter()
 
 # Scattering at each config and temperature

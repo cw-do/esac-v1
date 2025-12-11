@@ -188,7 +188,6 @@ delay(600)
 
 - For each configuration, complete both transmission and scattering before switching to the next configuration.
 - Do not return to earlier configurations.
-- Transmission measurements do not need to be repeated when changing temperature unless the system is unstable.
 
 12. Non-Standard Sample Holders
 -------------------------------

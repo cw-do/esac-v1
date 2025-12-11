@@ -43,9 +43,11 @@ class MainWindow(QMainWindow):
             sav_files = sorted([f for f in os.listdir(qrange_dir) if f.lower().endswith('.sav')])
             if sav_files:
                 config_names = [os.path.splitext(f)[0] for f in sav_files]
-                content = "# Available QRange Configurations\n\nUse these when selecting or discussing instrument setups:\n\n" + "\n".join(f"- {name}" for name in config_names)
-                self.knowledge_manager.local_knowledge["QRangeConfigurations.md"] = content
-                self.knowledge_manager.rag_only.add("QRangeConfigurations.md")
+                
+                content = "# Available Existing Configurations\n\nList of all available configurations for EQ-SANS instrument setups:\n\n```\n" + "\n".join(config_names) + "\n```\n\nUse this list when selecting or discussing configurations."
+
+                self.knowledge_manager.local_knowledge["Currently_Existing_Configurations"] = content
+                #self.knowledge_manager.rag_only.add("Currently_Existing_Configurations")
 
         # Print knowledge files included in context
         print("Hybrid Mode: Files included in context:")

@@ -5,6 +5,17 @@ import json
 import hashlib
 import sys
 
+# Priority files loaded for ICL (full context) - update this list as needed
+PRIORITY_FILES = [
+    'eqsans_scanfunctions_live.py',
+    'module1.md',
+    'module2.md', 
+    'module3.md',
+    'module4.md',
+    'module5.md',
+    'module6.md',
+]
+
 class KnowledgeManager:
     def __init__(self):
         self.local_knowledge = {}
@@ -72,11 +83,16 @@ class KnowledgeManager:
                     except Exception as e:
                         print(f"Error loading {file}: {e}")
 
+        # Mark non-priority static files as RAG-only
+        for filename in self.local_knowledge:
+            if filename not in PRIORITY_FILES:
+                self.rag_only.add(filename)
+
     def get_full_context(self, max_length=100000):
         """Get all local knowledge as context for ICL mode"""
-        # Prioritize eqsans_scanfunctions_live.py as it's most important for function definitions
-        priority_files = ['eqsans_scanfunctions_live.py']
-        other_files = [f for f in self.local_knowledge.keys() if f not in priority_files and f not in self.rag_only]
+        # Prioritize specified files for ICL
+        priority_files = [f for f in PRIORITY_FILES if f in self.local_knowledge]
+        other_files = [f for f in self.local_knowledge.keys() if f not in PRIORITY_FILES and f not in self.rag_only]
         
         # Build context with priority files first
         context_parts = []
@@ -93,8 +109,9 @@ class KnowledgeManager:
         if len(full_context) > max_length:
             # Try to fit the priority files completely
             priority_content = ""
-            if priority_files and priority_files[0] in self.local_knowledge:
-                priority_content = f"=== {priority_files[0]} ===\n{self.local_knowledge[priority_files[0]]}\n"
+            for filename in priority_files:
+                if filename in self.local_knowledge:
+                    priority_content += f"=== {filename} ===\n{self.local_knowledge[filename]}\n"
             
             remaining_length = max_length - len(priority_content)
             if remaining_length > 0:
@@ -113,7 +130,7 @@ class KnowledgeManager:
                             break
                 full_context = priority_content + other_content
             else:
-            # If priority files alone exceed limit, truncate them
+                # If priority files alone exceed limit, truncate them
                 full_context = priority_content[:max_length]
         
         return full_context

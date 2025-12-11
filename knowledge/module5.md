@@ -118,9 +118,9 @@ set_polysci_temp(20)
 5. Transmission Rules vs Temperature
 ------------------------------------
 
-### 5.1 Transmission is typically **not** repeated
+### 5.1 Transmission is typically **not** repeated for different temperatures
 If samples are temperature stable (e.g., solid or sealed liquid cells):
-- Transmission measurements are performed **once**, at the initial temperature for all configurations.
+- Transmission measurements are performed, at the initial temperature.
 
 ### 5.2 Exceptions requiring new transmission
 A new transmission measurement is needed when:
@@ -132,15 +132,11 @@ A new transmission measurement is needed when:
 
 ---
 
-6. High‑Temperature Multi‑Configuration Logic
+6. High‑Temperature 
 ---------------------------------------------
 
-When performing multiple configurations at high temperature:
-
-1. **Transmission** is performed only once (first temperature).
-2. **Scattering** is performed at each temperature.
-3. **Polysci must be set to 60C BEFORE increasing Peltier temperatures above 80°C.**
-4. Cooling back down must occur at the end.
+- **Polysci must be set to 60C BEFORE increasing Peltier temperatures above 80°C.**
+- Cooling back down must occur at the end.
 
 ### Example high‑temperature sequence
 ```

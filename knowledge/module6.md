@@ -30,7 +30,7 @@ This module defines *how the LLM decides* what needs to be done.
 ---------------------------
 
 ### Rule 1 — Always measure transmission before scattering  
-Transmission must happen before any scattering measurement for a configuration.
+Transmission must happen before any scattering measurement.
 
 ### Rule 2 — Minimize configuration changes  
 Saves time
@@ -65,7 +65,8 @@ The LLM must derive:
   - 9m 15A → `conf_9000mm_15p0A_60Hz`
 
 ### 3.2 Required measurement types  
-- Transmission is always needed for all configurations but once for initial temperature.
+- Transmission is always needed for all configurations.
+- Transmission does not need to be repeated for different temperature.
 - Scattering is required for all configurations.
 
 ### 3.3 Sample positions  
@@ -89,7 +90,7 @@ Examples:
 If multiple temperatures are provided:
 - Perform all scattering measurements per temperature
 - Use delay(600) after each temperature change
-- Only perform transmission once unless explicitly required
+- Only perform transmission measurements at initial temperature
 
 ---
 
@@ -104,48 +105,23 @@ Given:
 The correct execution order is:
 
 ```
-Transmission at first configuration
+Transmission at first temperature
+scattering at first temperature
 Then:
-    For each configuration:
-        For each temperature:
+    For each temperature that are left:
+        For each configuration:
             Perform scattering
 ```
 
 Never:
-- interleave configurations
-- interleave transmission and scattering
 - jump between temperatures without stabilization
 
 ---
 
-5. Logic for Multi-Sample Experiments
---------------------------------------
-
-### Rule: Transmission is performed per position ONLY once
-Example:
-```
-T-emptybeam
-T-sampleA
-T-sampleB
-T-sampleC
-```
-
-### Rule: Scattering is run per temperature and per configuration
-Example:
-```
-S-sampleA 25C
-S-sampleB 25C
-S-sampleC 25C
-
-S-sampleA 50C
-S-sampleB 50C
-S-sampleC 50C
-```
-
 ### Rule: Order is deterministic
 1. Transmission (all samples)
-2. For each configuration:
-   - For each temperature:
+2. For each temperature:
+   - For each configuration:
      - For each sample:
        - run scattering
 
@@ -168,16 +144,7 @@ If temperature ≥ 100°C:
 7. Logic for Multi-Configuration Experiments
 --------------------------------------------
 
-If user lists multiple configurations:
-
-1. Sort configurations in the order given by user  
-   (never reorder automatically)
-
-2. For each configuration:
-   - Transmission → only for the first configuration
-   - Scattering → for each configuration
-
-3. For high wavelengths (≥ 10A):
+For high wavelengths (≥ 10A):
    - Increase pc by factor of 2–3
 
 Example logic:
