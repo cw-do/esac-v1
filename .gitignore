@@ -1,6 +1,8 @@
 # Environment variables and secrets
 .env
 key.key
+config/
+env.txt
 
 # Python
 __pycache__/
