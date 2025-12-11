@@ -30,20 +30,24 @@ class QRangeCalculator:
                     content = f.read()
                     lines = content.split('\n')
                     for line in lines:
-                        if '=' in line:
-                            parts = line.split('=', 1)
+                        line = line.strip()
+                        if line and not line.startswith('#') and not line.startswith('<') and ' ' in line:
+                            parts = line.split(' ', 1)
                             if len(parts) == 2:
                                 key, value = parts
-                                key = key.strip()
-                                value = value.strip()
+                                # Strip the PV prefix
+                                if key.startswith('BL6:CS:QPlan:'):
+                                    param_name = key[len('BL6:CS:QPlan:'):]
+                                else:
+                                    param_name = key
                                 try:
                                     # Try to convert to float/int
                                     if '.' in value or 'e' in value.lower():
-                                        params[key] = float(value)
+                                        params[param_name] = float(value)
                                     else:
-                                        params[key] = int(float(value))  # Handle cases like '1.0'
+                                        params[param_name] = int(float(value))  # Handle cases like '1.0'
                                 except:
-                                    params[key] = value
+                                    params[param_name] = value
 
             # Load transmission config if exists (overwrites scattering values where applicable)
             config_path_trans = self.config_folder + config_name + "_trans.sav"
@@ -52,19 +56,23 @@ class QRangeCalculator:
                     content = f.read()
                     lines = content.split('\n')
                     for line in lines:
-                        if '=' in line:
-                            parts = line.split('=', 1)
+                        line = line.strip()
+                        if line and not line.startswith('#') and not line.startswith('<') and ' ' in line:
+                            parts = line.split(' ', 1)
                             if len(parts) == 2:
                                 key, value = parts
-                                key = key.strip()
-                                value = value.strip()
+                                # Strip the PV prefix
+                                if key.startswith('BL6:CS:QPlan:'):
+                                    param_name = key[len('BL6:CS:QPlan:'):]
+                                else:
+                                    param_name = key
                                 try:
                                     if '.' in value or 'e' in value.lower():
-                                        params[key] = float(value)
+                                        params[param_name] = float(value)
                                     else:
-                                        params[key] = int(float(value))
+                                        params[param_name] = int(float(value))
                                 except:
-                                    params[key] = value
+                                    params[param_name] = value
 
             return params
         except Exception as e:

@@ -350,11 +350,14 @@ class ChatWidget(QTabWidget):
                 context = source_info + "\n\n" + context
 
             # Check if message is asking for Q-range calculation
-            qrange_pattern = r'q\s*range.*(\d+(?:\.\d+)?m\s*\d+(?:\.\d+)?a)\s*config'
+            qrange_pattern = r'q\s*range.*(\d+(?:\.\d+)?)\s*m\s*(\d+(?:\.\d+)?)\s*a\s*config'
             qrange_match = re.search(qrange_pattern, message.lower())
             if qrange_match:
-                config_name = qrange_match.group(1).replace(' ', '').replace('m', 'm ').replace('a', 'a')
-                # Try to find the exact config name
+                distance_m = float(qrange_match.group(1))
+                wavelength_a = float(qrange_match.group(2))
+                distance_mm = int(distance_m * 1000)  # Convert to mm
+                
+                # Try to find matching config
                 available_configs = []
                 if "Currently_Existing_Configurations" in self.knowledge_manager.local_knowledge:
                     content = self.knowledge_manager.local_knowledge["Currently_Existing_Configurations"]
@@ -364,10 +367,11 @@ class ChatWidget(QTabWidget):
                     if config_list_match:
                         available_configs = [line.strip() for line in config_list_match.group(1).split('\n') if line.strip()]
                 
-                # Find matching config
+                # Find matching config based on distance and wavelength
                 matched_config = None
                 for config in available_configs:
-                    if config_name.lower().replace(' ', '') in config.lower().replace(' ', ''):
+                    config_lower = config.lower()
+                    if str(distance_mm) in config_lower and str(wavelength_a).replace('.', 'p') in config_lower:
                         matched_config = config
                         break
                 
@@ -391,7 +395,7 @@ class ChatWidget(QTabWidget):
                         self.input_field.clear()
                         return
                 else:
-                    response = f"Configuration '{config_name}' not found. Available configurations: {', '.join(available_configs[:10])}"
+                    response = f"Configuration for {distance_m}m {wavelength_a}Å not found. Available configurations: {', '.join(available_configs[:10])}"
                     self.add_message("AI", response)
                     self.conversation_history.append({"role": "assistant", "content": response})
                     self.input_field.clear()
