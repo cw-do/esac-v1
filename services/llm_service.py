@@ -73,7 +73,6 @@ Core Rules:
 - Follow real EQ-SANS instrument commands only.
 - Apply sequence: imports → setipts → transmission → scattering.
 - Enforce temperature rules, safety limits, and correct configuration order.
-- When uncertain, ask for clarification.
 - Handle missing details using defaults: IPTS=99999, ITEMS=0, etc.
 - Always prefer rules over examples. Do not invent commands.
 

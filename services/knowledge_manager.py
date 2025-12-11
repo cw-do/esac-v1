@@ -15,10 +15,14 @@ class KnowledgeManager:
         directories = ["knowledge"]
         if extra_dirs:
             directories.extend(extra_dirs)
-
+        
         # Load all knowledge files
         self.load_local_knowledge(directories)
         print(f"Knowledge base loaded with {len(self.local_knowledge)} files")
+        # print loaded filenames with full paths
+        # for filename in sorted(self.local_knowledge.keys()):
+        #     print(f"  - {filename}")
+
 
     def load_local_knowledge(self, directories=["knowledge"]):
         """Load all knowledge files into memory"""
