@@ -410,7 +410,8 @@ class ChatWidget(QTabWidget):
 
             self.input_field.clear()
         except Exception as e:
-            pass
+            self.add_message("AI", f"Error: {str(e)}")
+            self.conversation_history.append({"role": "assistant", "content": f"Error: {str(e)}"})
 
     def on_response_chunk(self, chunk):
         # Add chunk to the last AI message
