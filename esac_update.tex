@@ -352,72 +352,83 @@ UI notes:
   \item The previous CLI flags that allowed choosing between ICL and RAG were removed; the application now always runs using the combined ICL+RAG approach.
 \end{itemize}
 
-\subsubsection{Chat widget and worker}
+\subsubsection{Chat widget, search worker, and worker}
 \label{subsub:chat}
 
-\textbf{Class:} \texttt{ChatWorker} (in \texttt{gui/chat\_widget.py})
+	extbf{Class:} \texttt{SearchWorker} (in \texttt{gui/chat\_widget.py})
 
-\textbf{Constructor:}
+	extbf{Constructor:}
+\begin{verbatim}
+SearchWorker(keywords, base_path, max_depth)
+\end{verbatim}
+
+Behavior and signals:
+\begin{itemize}
+  \item Runs file-system traversal in a background \texttt{QThread} to avoid blocking the GUI.
+  \item Emits \texttt{result\_found} for each matching file (string payload with indexed path) and \texttt{finished} with the total count.
+  \item Performs depth-limited traversal (configurable \texttt{max\_depth}) and checks folder path, filename, and file content (text files only) for matches.
+\end{itemize}
+
+	extbf{Class:} \texttt{ChatWorker} (in \texttt{gui/chat\_widget.py})
+
+	extbf{Constructor:}
 \begin{verbatim}
 ChatWorker(llm_service, knowledge_manager, message,
-           context, conversation_history=None, icl=True)
+           context, conversation_history=None, icl=False)
 \end{verbatim}
 
 Behavior:
 \begin{itemize}
-  \item Runs in a background \texttt{QThread} to avoid blocking the GUI.
-  \item Uses \texttt{llm\_service.generate\_response\_stream(...)} to stream response chunks back to the UI via the \texttt{response\_chunk} signal.
-  \item On completion, emits \texttt{usage\_info} if token/cost usage data is available, followed by \texttt{finished}.
+  \item Runs in a background \texttt{QThread} and streams model outputs back to the UI via the \texttt{response\_chunk} signal.
+  \item Emits \texttt{usage\_info} when token/cost usage is available and \texttt{finished} on completion.
+  \item Default behavior uses the combined ICL+RAG payloads; the \texttt{icl} flag is available but defaulted to \texttt{False} in the worker constructor (the GUI sets the operational hybrid mode).
 \end{itemize}
 
-\textbf{Class:} \texttt{ChatWidget} (in \texttt{gui/chat\_widget.py})
+	extbf{Class:} \texttt{ChatWidget} (in \texttt{gui/chat\_widget.py})
 
-Key fields:
+	extbf{Constructor:}
+\begin{verbatim}
+ChatWidget(llm_service, knowledge_manager, config_manager, editor_widget=None)
+\end{verbatim}
+
+Notes and key fields:
 \begin{itemize}
-  \item \texttt{last\_script\_search\_results}: list --- stores the most recent search result objects (each is a dict containing \texttt{filepath}, \texttt{filename}, \texttt{folder}, \texttt{match\_types}, \texttt{matches}, and \texttt{mtime}).
-  \item \texttt{last\_search\_term}: \texttt{str} --- the last normalized search term used to populate results.
+  \item The widget is a \texttt{QTabWidget} containing the chat tab and a dedicated File Search tab.
+  \item \texttt{conversation\_history}: list --- stores recent chat entries used for streaming and context preservation.
+  \item \texttt{total\_tokens}, \texttt{total\_cost}: numeric counters for token/cost tracking displayed in the UI.
+  \item \texttt{search\_results} (\texttt{QListWidget}): UI list populated by the \texttt{SearchWorker}; double-clicking a result loads a file into the editor.
+  \item \texttt{input\_field}, \texttt{send\_button}, \texttt{model\_combo}, \texttt{token\_label}: primary UI controls for composing messages, sending, selecting models, and viewing token usage.
 \end{itemize}
 
-Important methods and behaviors:
+Important behaviors and flows:
 \begin{itemize}
-  \item \texttt{handle\_user\_message(self, message)}: entry point for text submitted by the user. Implements a creation-vs-search heuristic: if the message contains creation verbs such as ``write'', ``generate'', or ``create'', the message is forwarded to the LLM for code generation. Otherwise, a keyword extraction is performed and a script search may be initiated.
-  \item \texttt{extract\_search\_keywords(self, message)}: uses the \texttt{LLMService} to extract one or more normalized keywords suitable for filesystem/script searches. The extractor uses examples and a constrained prompt to avoid ambiguous outputs (e.g., returning the actual IPTS number rather than the token \texttt{ipts}).
-  \item \texttt{display\_search\_results(self, results, max\_show=15)}: accepts a list of result dicts and renders up to \texttt{max\_show} numbered entries in the chat. When ``find all'' is requested, the method returns the full list (index + full path) and updates \texttt{last\_script\_search\_results} so that \texttt{load script N} commands can reference any item returned.
-  \item \texttt{load\_script\_by\_index(self, index)}: given a 1-based index referencing \texttt{last\_script\_search\_results}, reads the corresponding file from disk and emits \texttt{copy\_to\_editor\_signal} with the file contents so the \texttt{EditorWidget} receives it. Errors (index out of range, file read failure) are reported back into the chat as user-visible messages.
+  \item \texttt{send\_message(self)}: collects the input text, optionally augments it with the current editor content and open-tab summary, appends it to \texttt{conversation\_history}, and launches a \texttt{ChatWorker} to stream the LLM response.
+  \item \texttt{perform\_file\_search}: invoked when a user submits keywords in the File Search tab; it creates a \texttt{SearchWorker} and updates \texttt{search\_results} as matches arrive.
+  \item \texttt{load\_file\_to\_editor}: triggered by double-clicking an entry in \texttt{search\_results}; reads the file contents and emits \texttt{copy\_to\_editor\_signal} with the file text so the \texttt{EditorWidget} can receive it.
+  \item Q-range handling: the widget detects natural-language Q-range requests and, when a candidate configuration list exists in the knowledge base, uses the LLM to select the best configuration name and calls the \texttt{KnowledgeManager.calculate\_qrange} helper to compute results.
 \end{itemize}
 
-Developer note: the \texttt{ChatWidget} uses a short heuristic to determine whether a user intent is to ``create'' new content (send to the LLM) or to ``find'' existing scripts (run a file-system search). This reduces accidental past-script loading when the user explicitly asks for a generated example.
+Developer note: the GUI separates intent to ``create'' (send to the LLM) vs ``find'' (run the file-system search) using simple heuristics and keyword checks to reduce accidental script loading.
 
 \subsubsection{Knowledge manager}
 \label{subsub:km}
 
-\textbf{Function:} \texttt{search\_past\_scripts(query, base\_dir="/home/controls/var/tmp", max\_results=15)}
+The \texttt{KnowledgeManager} is responsible for loading, indexing, and providing context from the local `knowledge/` directory and exposing utility helpers used by the GUI.
 
-Signature and return:
-\begin{verbatim}
-search_past_scripts(
-    query: str,
-    base_dir: str = "/home/controls/var/tmp",
-    max_results: int = 15
-) -> List[Dict]
-\end{verbatim}
-
-Each returned dictionary contains the following keys:
+Key methods and behavior:
 \begin{itemize}
-  \item \texttt{filepath} (str): absolute path to the matching file
-  \item \texttt{filename} (str): base filename
-  \item \texttt{folder} (str): containing folder name (useful for IPTS/user folder matches)
-  \item \texttt{match\_types} (List[str]): types of matches found such as \texttt{['filename','folder','content']}
-  \item \texttt{matches} (List[str]): snippets or matched strings found in the file or folder path
-  \item \texttt{mtime} (float): file modification time (seconds since epoch) used for recency sorting
+  \item \texttt{load\_or\_build\_index(extra\_dirs=None)}: loads knowledge files into memory and prepares priority lists for ICL assembly.
+  \item \texttt{load\_local\_knowledge(directories=["knowledge"])}: populates \texttt{self.local\_knowledge} by reading text, markdown, PDF, and JSON files from the specified directories. When running from the PyInstaller bundle, it reads from \texttt{sys._MEIPASS}.
+  \item \texttt{get\_full\_context(max\_length=100000)}: assembles and returns the concatenated ICL payload, honoring a prioritized file list and truncation strategy.
+  \item \texttt{get\_relevant\_context(query, max\_length=100000)}: RAG-style extractor that ranks files by relevance, extracts relevant sections (markdown headers, function blocks, and context windows), and returns a focused context bundle.
+  \item \texttt{get\_qrange\_config\_data(config\_name)}: convenience wrapper that delegates to \texttt{QRangeCalculator.load\_config\_data(config\_name)} and returns the parsed config parameters.
+  \item \texttt{calculate\_qrange(config\_name)}: loads the named configuration and delegates to \texttt{QRangeCalculator.calculate\_q\_range} to produce numeric Q-range results (or \texttt{None} on error).
 \end{itemize}
 
-Key behavior and implementation notes:
+Return formats and notes:
 \begin{itemize}
-  \item The function performs a depth-limited directory traversal (depth limit = 5) to avoid scanning unrelated system paths.
-  \item Subfolder and IPTS-pattern matching are explicitly supported: queries like \texttt{34382\_yifan} or \texttt{34382} match folder names even when not present in the filename.
-  \item Matches are collected across the full traversal, annotated with \texttt{mtime}, sorted by recency (newest first), and truncated to \texttt{max\_results}.
-  \item This ordering ensures that the most recent relevant scripts are presented to the user rather than an arbitrary early subset.
+  \item Q-range results are returned as a dictionary mapping human-readable keys (for example, \texttt{'QMin'}, \texttt{'QMaxEdge'}, \texttt{'WLMin'}, etc.) to numeric values or strings.
+  \item The knowledge manager marks non-priority static files as RAG-only to reduce ICL payload size while preserving retrievability for targeted queries.
 \end{itemize}
 
 \subsubsection{LLM Service (keyword extraction and generation)}
