@@ -126,11 +126,13 @@ class CodeEditor(QPlainTextEdit):
         self.setExtraSelections(extra_selections)
 
 class EditorWidget(QWidget):
-    def __init__(self, base_mono_font_size=None):
+    def __init__(self, base_mono_font_size=None, config_manager=None):
         super().__init__()
         layout = QVBoxLayout()
         # Store base monospace font size for new editor tabs
         self.base_mono_font_size = base_mono_font_size
+        # Config manager for persisting last used directory
+        self.config_manager = config_manager
 
         # Create tab widget
         self.tab_widget = QTabWidget()
@@ -230,7 +232,17 @@ class EditorWidget(QWidget):
             QMessageBox.warning(self, "Warning", "Cannot close the last tab.")
 
     def open_file(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Open File", "", "Python Files (*.py);;Text Files (*.txt);;All Files (*)")
+        # Determine initial directory: current file dir, configured last_dir, or default tmp folder
+        start_dir = ""
+        current_path = self.get_current_file_path()
+        if current_path:
+            start_dir = os.path.dirname(current_path)
+        elif self.config_manager and self.config_manager.get('last_dir'):
+            start_dir = self.config_manager.get('last_dir')
+        else:
+            start_dir = "/home/controls/var/tmp"
+
+        filename, _ = QFileDialog.getOpenFileName(self, "Open File", start_dir, "Python Files (*.py);;Text Files (*.txt);;All Files (*)")
         if filename:
             try:
                 with open(filename, 'r', encoding='utf-8') as f:
@@ -258,6 +270,12 @@ class EditorWidget(QWidget):
                     new_editor = self.tab_widget.widget(new_index)
                     if isinstance(new_editor, CodeEditor):
                         new_editor.file_path = filename
+                # Persist last directory
+                try:
+                    if self.config_manager:
+                        self.config_manager.set('last_dir', os.path.dirname(filename))
+                except Exception:
+                    pass
                     
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to open file: {str(e)}")
@@ -321,7 +339,17 @@ class EditorWidget(QWidget):
         if not isinstance(current_editor, CodeEditor):
             return
             
-        filename, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Python Files (*.py);;Text Files (*.txt);;All Files (*)")
+        # Determine initial directory for save dialog
+        start_dir = ""
+        current_path = self.get_current_file_path()
+        if current_path:
+            start_dir = os.path.dirname(current_path)
+        elif self.config_manager and self.config_manager.get('last_dir'):
+            start_dir = self.config_manager.get('last_dir')
+        else:
+            start_dir = "/home/controls/var/tmp"
+
+        filename, _ = QFileDialog.getSaveFileName(self, "Save File", start_dir, "Python Files (*.py);;Text Files (*.txt);;All Files (*)")
         if filename:
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
@@ -331,7 +359,12 @@ class EditorWidget(QWidget):
                 basename = os.path.basename(filename)
                 self.tab_widget.setTabText(current_index, basename)
                 current_editor.file_path = filename
-                
+                # Persist last directory
+                try:
+                    if self.config_manager:
+                        self.config_manager.set('last_dir', os.path.dirname(filename))
+                except Exception:
+                    pass
                 QMessageBox.information(self, "Success", "File saved successfully.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to save file: {str(e)}")

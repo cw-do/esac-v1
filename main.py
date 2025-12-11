@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         top_splitter = QSplitter(Qt.Horizontal)
         
         # Editor widget
-        self.editor = EditorWidget(base_mono_font_size)
+        self.editor = EditorWidget(base_mono_font_size, config_manager=self.config_manager)
         top_splitter.addWidget(self.editor)
 
         # Chat widget
