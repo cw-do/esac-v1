@@ -1,6 +1,7 @@
 import sys
 import os
 import warnings
+import argparse
 import tiktoken
 
 # Suppress SIP deprecation warning
@@ -20,7 +21,7 @@ from services.script_executor import ScriptExecutor
 from services.config_manager import ConfigManager
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, base_mono_font_size=None):
         super().__init__()
         mode_name = "Hybrid Mode"
         self.setWindowTitle(f"ESAC v1 - EQ-SANS Assisting Chatbot ({mode_name})")
@@ -81,7 +82,7 @@ class MainWindow(QMainWindow):
         top_splitter = QSplitter(Qt.Horizontal)
         
         # Editor widget
-        self.editor = EditorWidget()
+        self.editor = EditorWidget(base_mono_font_size)
         top_splitter.addWidget(self.editor)
 
         # Chat widget
@@ -220,7 +221,27 @@ class MainWindow(QMainWindow):
             self.time_label.setText("Est. time: No script")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--largefont', action='store_true', help='Increase overall font size by +2 points')
+    parser.add_argument('--font-offset', type=int, default=2, help='Number of points to increase when --largefont is used')
+    args, unknown = parser.parse_known_args()
+
     app = QApplication(sys.argv)
-    window = MainWindow()
+
+    # If requested, increase the global application font size (best-effort)
+    if args.largefont:
+        try:
+            app_font = app.font()
+            base_size = app_font.pointSize() if app_font.pointSize() > 0 else 10
+            app_font.setPointSize(base_size + int(args.font_offset))
+            app.setFont(app_font)
+            print(f"Launched with increased font size: {base_size} -> {base_size + int(args.font_offset)}")
+        except Exception as e:
+            print(f"Warning: failed to adjust application font size: {e}")
+
+    # Pass base monospace font size to editor so code font scales as well
+    base_mono = app.font().pointSize() if app.font().pointSize() > 0 else 10
+
+    window = MainWindow(base_mono_font_size=base_mono)
     window.show()
     sys.exit(app.exec_())

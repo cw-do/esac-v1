@@ -126,9 +126,11 @@ class CodeEditor(QPlainTextEdit):
         self.setExtraSelections(extra_selections)
 
 class EditorWidget(QWidget):
-    def __init__(self):
+    def __init__(self, base_mono_font_size=None):
         super().__init__()
         layout = QVBoxLayout()
+        # Store base monospace font size for new editor tabs
+        self.base_mono_font_size = base_mono_font_size
 
         # Create tab widget
         self.tab_widget = QTabWidget()
@@ -203,7 +205,12 @@ class EditorWidget(QWidget):
         
         # Create new editor widget
         editor = CodeEditor()
-        editor.setFont(QFont("Courier New", 10))
+        # Use provided base monospace font size if passed, otherwise default to 10
+        try:
+            size = int(self.base_mono_font_size) if self.base_mono_font_size is not None else 10
+        except Exception:
+            size = 10
+        editor.setFont(QFont("Courier New", size))
         
         # Add tab
         tab_index = self.tab_widget.addTab(editor, title)
