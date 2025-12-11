@@ -362,7 +362,6 @@ class ChatWidget(QTabWidget):
                 if "Currently_Existing_Configurations" in self.knowledge_manager.local_knowledge:
                     content = self.knowledge_manager.local_knowledge["Currently_Existing_Configurations"]
                     # Extract config names from the content
-                    import re
                     config_list_match = re.search(r'```\n(.*?)\n```', content, re.DOTALL)
                     if config_list_match:
                         available_configs = [line.strip() for line in config_list_match.group(1).split('\n') if line.strip()]
