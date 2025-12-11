@@ -405,10 +405,16 @@ class ChatWidget(QTabWidget):
                 filepath = os.path.join(root, file)
                 match = False
                 
-                # Check filename
-                filename_lower = file.lower()
-                if any(kw.lower() in filename_lower for kw in keyword_list):
+                # Check full path (including folder names)
+                path_lower = filepath.lower()
+                if any(kw.lower() in path_lower for kw in keyword_list):
                     match = True
+                
+                # Check filename
+                if not match:
+                    filename_lower = file.lower()
+                    if any(kw.lower() in filename_lower for kw in keyword_list):
+                        match = True
                 
                 # Check file content if text file
                 if not match:
