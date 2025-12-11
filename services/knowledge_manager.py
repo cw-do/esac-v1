@@ -135,6 +135,7 @@ class KnowledgeManager:
         
         return full_context
 
+    #updated one
     def get_relevant_context(self, query, max_length=100000):
         """Get relevant context for RAG mode based on query similarity"""
         if not self.local_knowledge:
@@ -183,31 +184,43 @@ class KnowledgeManager:
                 lines = content.split('\n')
                 relevant_lines = []
                 
-                for i, line in enumerate(lines):
-                    line_lower = line.lower()
-                    line_score = 0
-                    
-                    # Check for function definitions
-                    if re.search(func_pattern, line):
-                        func_name = re.search(func_pattern, line).group(1)
-                        if any(word in func_name.lower() for word in query_words):
-                            line_score += 50
-                    
-                    # Check for keyword matches
-                    if any(word in line_lower for word in query_words):
-                        line_score += 10
-                    
-                    # Check for technical terms
-                    if any(term in line_lower for term in technical_terms if term in query_lower):
-                        line_score += 5
-                    
-                    if line_score > 0:
-                        # Include context around the relevant line
-                        start = max(0, i - 2)
-                        end = min(len(lines), i + 3)
-                        context_lines = lines[start:end]
-                        relevant_lines.extend(context_lines)
-                        relevant_lines.append("")  # Add blank line between sections
+                # For markdown files, extract entire sections based on headers
+                if filename.endswith('.md'):
+                    sections = re.split(r'(^#{1,6}\s+.*$)', content, flags=re.MULTILINE)
+                    for i in range(1, len(sections), 2):  # Headers are at odd indices
+                        header = sections[i].strip()
+                        section_content = sections[i+1] if i+1 < len(sections) else ""
+                        if any(word in header.lower() for word in query_words) or any(word in section_content.lower() for word in query_words):
+                            relevant_lines.append(header)
+                            relevant_lines.extend(section_content.split('\n'))
+                            relevant_lines.append("")
+                else:
+                    # Original line-by-line extraction for non-markdown files
+                    for i, line in enumerate(lines):
+                        line_lower = line.lower()
+                        line_score = 0
+                        
+                        # Check for function definitions
+                        if re.search(func_pattern, line):
+                            func_name = re.search(func_pattern, line).group(1)
+                            if any(word in func_name.lower() for word in query_words):
+                                line_score += 50
+                        
+                        # Check for keyword matches
+                        if any(word in line_lower for word in query_words):
+                            line_score += 10
+                        
+                        # Check for technical terms
+                        if any(term in line_lower for term in technical_terms if term in query_lower):
+                            line_score += 5
+                        
+                        if line_score > 0:
+                            # Include expanded context around the relevant line (increased from 2/3 to 5/10)
+                            start = max(0, i - 5)
+                            end = min(len(lines), i + 10)
+                            context_lines = lines[start:end]
+                            relevant_lines.extend(context_lines)
+                            relevant_lines.append("")  # Add blank line between sections
                 
                 if relevant_lines:
                     # Remove duplicates while preserving order
@@ -264,3 +277,4 @@ class KnowledgeManager:
                 return "No relevant knowledge found for this query."
         
         return '\n\n'.join(context_parts)
+

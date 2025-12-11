@@ -5,6 +5,61 @@ import os
 from services.llm_service import LLMService
 from services.knowledge_manager import KnowledgeManager
 
+class SearchWorker(QThread):
+    progress = pyqtSignal(str)
+    result_found = pyqtSignal(str)
+    finished = pyqtSignal(int)
+
+    def __init__(self, keywords, base_path, max_depth):
+        super().__init__()
+        self.keywords = keywords
+        self.base_path = base_path
+        self.max_depth = max_depth
+
+    def run(self):
+        results = []
+        index = 1
+        
+        for root, dirs, files in os.walk(self.base_path):
+            # Calculate depth
+            depth = root[len(self.base_path):].count(os.sep)
+            if depth > self.max_depth:
+                dirs[:] = []  # Don't go deeper
+                continue
+            
+            for file in files:
+                filepath = os.path.join(root, file)
+                match = False
+                
+                # Check full path (including folder names)
+                path_lower = filepath.lower()
+                if any(kw.lower() in path_lower for kw in self.keywords):
+                    match = True
+                
+                # Check filename
+                if not match:
+                    filename_lower = file.lower()
+                    if any(kw.lower() in filename_lower for kw in self.keywords):
+                        match = True
+                
+                # Check file content if text file
+                if not match:
+                    try:
+                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                            content = f.read().lower()
+                            if any(kw.lower() in content for kw in self.keywords):
+                                match = True
+                    except:
+                        pass  # Skip binary files
+                
+                if match:
+                    result = f"{index}. {filepath}"
+                    results.append(result)
+                    self.result_found.emit(result)
+                    index += 1
+        
+        self.finished.emit(len(results))
+
 class ChatWorker(QThread):
     response_chunk = pyqtSignal(str)
     finished = pyqtSignal()
@@ -396,53 +451,25 @@ class ChatWidget(QTabWidget):
         base_path = "/home/controls/var/tmp"
         max_depth = 4
         
-        results = []
-        index = 1
-        
-        for root, dirs, files in os.walk(base_path):
-            # Calculate depth
-            depth = root[len(base_path):].count(os.sep)
-            if depth > max_depth:
-                dirs[:] = []  # Don't go deeper
-                continue
-            
-            for file in files:
-                filepath = os.path.join(root, file)
-                match = False
-                
-                # Check full path (including folder names)
-                path_lower = filepath.lower()
-                if any(kw.lower() in path_lower for kw in keyword_list):
-                    match = True
-                
-                # Check filename
-                if not match:
-                    filename_lower = file.lower()
-                    if any(kw.lower() in filename_lower for kw in keyword_list):
-                        match = True
-                
-                # Check file content if text file
-                if not match:
-                    try:
-                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                            content = f.read().lower()
-                            if any(kw.lower() in content for kw in keyword_list):
-                                match = True
-                    except:
-                        pass  # Skip binary files
-                
-                if match:
-                    results.append(f"{index}. {filepath}")
-                    index += 1
-        
-        for result in results:
-            item = QListWidgetItem(result)
-            self.search_results.addItem(item)
-        
-        if results:
-            self.search_status.setText(f"Found {len(results)} matching files")
+        # Start search worker thread
+        self.search_worker = SearchWorker(keyword_list, base_path, max_depth)
+        self.search_worker.result_found.connect(self.on_search_result)
+        self.search_worker.finished.connect(self.on_search_finished)
+        self.search_worker.start()
+
+    def on_search_result(self, result):
+        """Add a search result to the list"""
+        item = QListWidgetItem(result)
+        self.search_results.addItem(item)
+
+    def on_search_finished(self, count):
+        """Handle search completion"""
+        if count > 0:
+            self.search_status.setText(f"Found {count} matching files")
         else:
             self.search_status.setText("No matching files found")
+        # Clean up worker
+        self.search_worker.deleteLater()
 
     def load_file_to_editor(self, item):
         """Load selected file to editor"""
