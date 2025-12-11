@@ -64,9 +64,17 @@ class MainWindow(QMainWindow):
             encoding = tiktoken.encoding_for_model("gpt-4")  # Use GPT-4 encoding as reference
             tokens = len(encoding.encode(context))
         except Exception as e:
-            # Log the issue and use a conservative estimate (~4 chars/token)
-            print(f"Warning: tiktoken encoding unavailable ({e}). Using fallback token estimate.")
-            tokens = max(0, int(len(context) / 4))
+            # Sometimes encoding_for_model fails in frozen builds because the
+            # encoding data isn't bundled or registry plugins aren't discoverable.
+            # Try loading the common encoding by name before falling back to a
+            # crude character-based token estimate.
+            try:
+                encoding = tiktoken.get_encoding("cl100k_base")
+                tokens = len(encoding.encode(context))
+            except Exception:
+                # Log the issue and use a conservative estimate (~4 chars/token)
+                print(f"Warning: tiktoken encoding unavailable ({e}). Using fallback token estimate.")
+                tokens = max(0, int(len(context) / 4))
 
         print(f"Total tokens in ICL context (est): {tokens}")
         print(f"Within typical context limit (128k): {tokens < 128000}")
