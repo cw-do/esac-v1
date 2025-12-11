@@ -388,7 +388,7 @@ Return ONLY the configuration name, nothing else. If no good match, return "NONE
                             # Proceed with calculation
                             qrange_results = self.knowledge_manager.calculate_qrange(matched_config)
                             if qrange_results:
-                                response = f"Q-range calculation for configuration '{matched_config}':\n\n"
+                                response = f"Q-range calculation for best-matching configuration '{matched_config}':\n\n"
                                 for key, value in qrange_results.items():
                                     if isinstance(value, float):
                                         response += f"{key}: {value:.4f}\n"
