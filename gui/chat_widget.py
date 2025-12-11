@@ -140,6 +140,10 @@ class ChatWidget(QTabWidget):
         self.search_input.returnPressed.connect(self.perform_file_search)
         search_layout.addWidget(self.search_input)
 
+        # Status label
+        self.search_status = QLabel("")
+        search_layout.addWidget(self.search_status)
+
         # Results list
         self.search_results = QListWidget()
         self.search_results.itemDoubleClicked.connect(self.load_file_to_editor)
@@ -386,6 +390,7 @@ class ChatWidget(QTabWidget):
         if not keyword_list:
             return
         
+        self.search_status.setText("Searching...")
         self.search_results.clear()
         
         base_path = "/home/controls/var/tmp"
@@ -433,6 +438,11 @@ class ChatWidget(QTabWidget):
         for result in results:
             item = QListWidgetItem(result)
             self.search_results.addItem(item)
+        
+        if results:
+            self.search_status.setText(f"Found {len(results)} matching files")
+        else:
+            self.search_status.setText("No matching files found")
 
     def load_file_to_editor(self, item):
         """Load selected file to editor"""
