@@ -350,7 +350,7 @@ class ChatWidget(QTabWidget):
                 context = source_info + "\n\n" + context
 
             # Check if message is asking for Q-range calculation
-            qrange_pattern = r'q\s*range.*(\d+(?:\.\d+)?)\s*m\s*(\d+(?:\.\d+)?)\s*a\s*config'
+            qrange_pattern = r'q\s*range.*[^\d]*(\d+(?:\.\d+)?)\s*m\s*(\d+(?:\.\d+)?)\s*a'
             qrange_match = re.search(qrange_pattern, message.lower())
             if qrange_match:
                 distance_m = float(qrange_match.group(1))
