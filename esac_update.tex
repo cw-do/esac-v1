@@ -318,154 +318,7 @@ Several performance optimizations have been implemented:
   \item \textbf{Threading}: Non-blocking UI during AI processing
 \end{itemize}
 
-\subsection{API and Function Reference}
-\label{subsec:function_reference}
 
-This subsection provides a concise developer-oriented reference for the primary modules and functions that were modified or added during the ESAC v1 development cycle. Each entry includes a short description, signature, parameters, return values, and important implementation notes or examples.
-
-\subsubsection{Main application: \texttt{MainWindow}}
-\label{subsub:mainwindow}
-
-\textbf{Class:} \texttt{MainWindow} (defined in \texttt{main.py})
-
-\textbf{Constructor:}
-\begin{verbatim}
-MainWindow(icl: bool = True, font_size: str = 'normal')
-\end{verbatim}
-
-Parameters:
-\begin{itemize}
-  \item \textbf{icl}: kept for backward compatibility; ESAC now operates in a combined ``ICL + RAG'' mode by default. The GUI title reflects this and mode selection CLI flags were removed.
-  \item \textbf{font\_size}: initial UI font size string: one of \{\texttt{small}, \texttt{normal}, \texttt{large}\}. Controlled via the CLI option \texttt{--font} and applied with \texttt{QApplication.setFont()}.
-\end{itemize}
-
-Important methods:
-\begin{itemize}
-  \item \texttt{run\_script(self)}: reads the current editor text and forwards it to \texttt{ScriptExecutor.run\_script} for execution.
-  \item \texttt{simulate\_script(self)}: performs a Python \texttt{compile()} syntax check on the editor content and updates \texttt{time\_label} with ``Syntax OK'' or the syntax error details.
-  \item \texttt{estimate\_time(self)}: parses the numeric \texttt{pc\_per\_hour} value from the \texttt{pc\_input} text field, calls \texttt{ScriptExecutor.estimate\_time(script\_content, pc\_per\_hour)}, and updates \texttt{time\_label} with the formatted estimate. Invalid numeric input results in ``Est. time: Invalid PC value''.
-\end{itemize}
-
-UI notes:
-\begin{itemize}
-  \item The ``PC per hour:'' label has been right-aligned and given a fixed width to reduce spacing and keep the control visually adjacent to its input. The layout groups PC controls (\texttt{pc\_input}, estimate button, \texttt{time\_label}) into a single \texttt{QHBoxLayout} called \texttt{pc\_layout}.
-  \item The previous CLI flags that allowed choosing between ICL and RAG were removed; the application now always runs using the combined ICL+RAG approach.
-\end{itemize}
-
-\subsubsection{Chat widget, search worker, and worker}
-\label{subsub:chat}
-
-	extbf{Class:} \texttt{SearchWorker} (in \texttt{gui/chat\_widget.py})
-
-	extbf{Constructor:}
-\begin{verbatim}
-SearchWorker(keywords, base_path, max_depth)
-\end{verbatim}
-
-Behavior and signals:
-\begin{itemize}
-  \item Runs file-system traversal in a background \texttt{QThread} to avoid blocking the GUI.
-  \item Emits \texttt{result\_found} for each matching file (string payload with indexed path) and \texttt{finished} with the total count.
-  \item Performs depth-limited traversal (configurable \texttt{max\_depth}) and checks folder path, filename, and file content (text files only) for matches.
-\end{itemize}
-
-	extbf{Class:} \texttt{ChatWorker} (in \texttt{gui/chat\_widget.py})
-
-	extbf{Constructor:}
-\begin{verbatim}
-ChatWorker(llm_service, knowledge_manager, message,
-           context, conversation_history=None, icl=False)
-\end{verbatim}
-
-Behavior:
-\begin{itemize}
-  \item Runs in a background \texttt{QThread} and streams model outputs back to the UI via the \texttt{response\_chunk} signal.
-  \item Emits \texttt{usage\_info} when token/cost usage is available and \texttt{finished} on completion.
-  \item Default behavior uses the combined ICL+RAG payloads; the \texttt{icl} flag is available but defaulted to \texttt{False} in the worker constructor (the GUI sets the operational hybrid mode).
-\end{itemize}
-
-	extbf{Class:} \texttt{ChatWidget} (in \texttt{gui/chat\_widget.py})
-
-	extbf{Constructor:}
-\begin{verbatim}
-ChatWidget(llm_service, knowledge_manager, config_manager, editor_widget=None)
-\end{verbatim}
-
-Notes and key fields:
-\begin{itemize}
-  \item The widget is a \texttt{QTabWidget} containing the chat tab and a dedicated File Search tab.
-  \item \texttt{conversation\_history}: list --- stores recent chat entries used for streaming and context preservation.
-  \item \texttt{total\_tokens}, \texttt{total\_cost}: numeric counters for token/cost tracking displayed in the UI.
-  \item \texttt{search\_results} (\texttt{QListWidget}): UI list populated by the \texttt{SearchWorker}; double-clicking a result loads a file into the editor.
-  \item \texttt{input\_field}, \texttt{send\_button}, \texttt{model\_combo}, \texttt{token\_label}: primary UI controls for composing messages, sending, selecting models, and viewing token usage.
-\end{itemize}
-
-Important behaviors and flows:
-\begin{itemize}
-  \item \texttt{send\_message(self)}: collects the input text, optionally augments it with the current editor content and open-tab summary, appends it to \texttt{conversation\_history}, and launches a \texttt{ChatWorker} to stream the LLM response.
-  \item \texttt{perform\_file\_search}: invoked when a user submits keywords in the File Search tab; it creates a \texttt{SearchWorker} and updates \texttt{search\_results} as matches arrive.
-  \item \texttt{load\_file\_to\_editor}: triggered by double-clicking an entry in \texttt{search\_results}; reads the file contents and emits \texttt{copy\_to\_editor\_signal} with the file text so the \texttt{EditorWidget} can receive it.
-  \item Q-range handling: the widget detects natural-language Q-range requests and, when a candidate configuration list exists in the knowledge base, uses the LLM to select the best configuration name and calls the \texttt{KnowledgeManager.calculate\_qrange} helper to compute results.
-\end{itemize}
-
-Developer note: the GUI separates intent to ``create'' (send to the LLM) vs ``find'' (run the file-system search) using simple heuristics and keyword checks to reduce accidental script loading.
-
-\subsubsection{Knowledge manager}
-\label{subsub:km}
-
-The \texttt{KnowledgeManager} is responsible for loading, indexing, and providing context from the local `knowledge/` directory and exposing utility helpers used by the GUI.
-
-Key methods and behavior:
-\begin{itemize}
-  \item \texttt{load\_or\_build\_index(extra\_dirs=None)}: loads knowledge files into memory and prepares priority lists for ICL assembly.
-  \item \texttt{load\_local\_knowledge(directories=["knowledge"])}: populates \texttt{self.local\_knowledge} by reading text, markdown, PDF, and JSON files from the specified directories. When running from the PyInstaller bundle, it reads from \texttt{sys._MEIPASS}.
-  \item \texttt{get\_full\_context(max\_length=100000)}: assembles and returns the concatenated ICL payload, honoring a prioritized file list and truncation strategy.
-  \item \texttt{get\_relevant\_context(query, max\_length=100000)}: RAG-style extractor that ranks files by relevance, extracts relevant sections (markdown headers, function blocks, and context windows), and returns a focused context bundle.
-  \item \texttt{get\_qrange\_config\_data(config\_name)}: convenience wrapper that delegates to \texttt{QRangeCalculator.load\_config\_data(config\_name)} and returns the parsed config parameters.
-  \item \texttt{calculate\_qrange(config\_name)}: loads the named configuration and delegates to \texttt{QRangeCalculator.calculate\_q\_range} to produce numeric Q-range results (or \texttt{None} on error).
-\end{itemize}
-
-Return formats and notes:
-\begin{itemize}
-  \item Q-range results are returned as a dictionary mapping human-readable keys (for example, \texttt{'QMin'}, \texttt{'QMaxEdge'}, \texttt{'WLMin'}, etc.) to numeric values or strings.
-  \item The knowledge manager marks non-priority static files as RAG-only to reduce ICL payload size while preserving retrievability for targeted queries.
-\end{itemize}
-
-\subsubsection{LLM Service (keyword extraction and generation)}
-\label{subsub:llm}
-
-\textbf{Function:} \texttt{generate\_response\_stream(prompt, context, chunk\_callback, conversation\_history=None, icl=True)}
-
-Purpose:
-\begin{itemize}
-  \item Streams model outputs back to the caller via \texttt{chunk\_callback} as they are produced.
-  \item For keyword extraction, the LLM is invoked with a constrained prompt that emphasizes returning plain tokens (e.g., numeric IPTS identifiers) rather than narrative text.
-\end{itemize}
-
-Return value and side effects:
-\begin{itemize}
-  \item The function may return either a final response string or a tuple \texttt{(response\_str, usage\_dict)}, where \texttt{usage\_dict} contains token counts and estimated cost.
-  \item Usage information is emitted to the GUI to support cost-aware model selection by the user.
-\end{itemize}
-
-Implementation notes:
-\begin{itemize}
-  \item The API supports both ICL-style calls (large curated context payloads) and RAG-style retrieval augmentation; the front-end determines emphasis, but the back-end can perform both simultaneously.
-  \item Keyword extraction uses a narrowly scoped prompt with examples and fallback heuristics to ensure stable, unambiguous outputs across diverse user inputs.
-\end{itemize}
-\subsubsection{Editor and script executor}
-\label{subsub:editor}
-
-\textbf{EditorWidget} (in \texttt{gui/editor\_widget.py}): provides typical editor operations such as \texttt{get\_text()}, \texttt{set\_text(text)}, file open/save functionality, and syntax highlighting.
-
-\textbf{ScriptExecutor}: exposes two functions used by the GUI:
-\begin{itemize}
-  \item \texttt{run\_script(script\_text: str)}: executes a script in a sandboxed environment (or hands it to the experimental runner configured for the instrument). Execution details and safety checks are implementation-specific.
-  \item \texttt{estimate\_time(script\_text: str, pc\_per\_hour: float) -> str}: returns a human-readable estimate of experiment time derived from the proton charge budget (\texttt{pc\_per\_hour}) and script commands. The GUI's \texttt{estimate\_time} handler converts invalid numeric input into a clear error message.
-\end{itemize}
-
-\vspace{6pt}
-These developer-facing descriptions should help new contributors understand the core integration points and where to extend or modify functionality.
 \section{DISCUSSION}
 \label{sec:discussion}
 
@@ -493,6 +346,11 @@ User experience also improved dramatically over the original version. The introd
 Deployment presented another major improvement area. The adoption of PyInstaller for packaging ESAC v1 as a standalone executable eliminated the need for Python environments or dependency management, significantly simplifying installation for instrument scientists and visiting users. Secure storage of API keys and automated update handling further strengthened the reliability and portability of the system.
 
 Collectively, these enhancements have made ESAC v1 a far more capable and accessible tool for neutron scattering research. Early adopters report substantial reductions in script preparation time, fewer errors due to improved grounding of generated code, and a more intuitive workflow overall. The integration of advanced AI reasoning with a modernized interface and robust deployment strategy positions ESAC v1 as a foundational tool for future automation across SNS instruments.
+%
+% Deployed to beamline note
+ESAC v1 has been deployed to the EQ\textendash SANS (BL\-6) beamline at the Spallation Neutron Source for operational use by instrument scientists and beamline staff; early in‑beamline use indicates improved experiment preparation efficiency and smoother script reuse workflows.
+
+ESAC v1 has been deployed to the EQ‑SANS (BL‑6) beamline at the Spallation Neutron Source for operational use by instrument scientists and beamline staff; initial in‑beamline use indicates improved experiment preparation efficiency and smoother script reuse workflows.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
