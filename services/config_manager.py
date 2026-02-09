@@ -11,22 +11,20 @@ class ConfigManager:
         self.config = {}
         self.cipher = None
 
-        # Set SSL certificate path for bundled app
-        if hasattr(sys, '_MEIPASS'):
-            ssl_cert_path = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
-            if os.path.exists(ssl_cert_path):
-                os.environ['SSL_CERT_FILE'] = ssl_cert_path
-                os.environ['REQUESTS_CA_BUNDLE'] = ssl_cert_path
-
-        # Load .env file
-        if hasattr(sys, '_MEIPASS'):
-            dotenv_path = os.path.join(sys._MEIPASS, 'config', 'env.txt')
-        else:
-            dotenv_path = os.path.join('config', 'env.txt')
-        load_dotenv(dotenv_path=dotenv_path)
+        # Load .env file from executable directory
+        exe_dir = os.getcwd()
+        print(exe_dir)
+        env_file = os.path.join(exe_dir, '.env')
+        load_dotenv(env_file)
 
         self._load_or_create_key()
         self._load_config()
+
+        # Print API key status
+        if os.getenv('OPENROUTER_API_KEY'):
+            print("apikey found")
+        else:
+            print("apikey not found")
 
     def _load_or_create_key(self):
         if os.path.exists(self.key_file):
